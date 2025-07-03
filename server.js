@@ -9,6 +9,7 @@ const Database = require('./src/database/database');
 const { requireAuth, requireTokens, generateToken, optionalAuth } = require('./src/middleware/auth');
 const { requireSiteAuth } = require('./src/middleware/siteAuth');
 const EtsyAutomation = require('./src/index');
+const UserAutomation = require('./src/userAutomation');
 const GoogleDriveService = require('./src/services/googleDrive');
 const ImageProcessor = require('./src/services/imageProcessor');
 
@@ -199,29 +200,31 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-app.get('/api/folders', async (req, res) => {
+app.get('/api/folders', requireAuth, requireTokens, async (req, res) => {
   try {
-    const folders = await googleDrive.pollForNewFolders();
+    const userServices = createUserServices(req.userTokens);
+    const folders = await userServices.googleDrive.pollForNewFolders();
     res.json({ success: true, folders });
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
-app.post('/api/process-folder/:folderId', async (req, res) => {
+app.post('/api/process-folder/:folderId', requireAuth, requireTokens, async (req, res) => {
   try {
     const { folderId } = req.params;
     
-    // Start processing (non-blocking)
-    const automation = new EtsyAutomation();
-    const folders = await googleDrive.pollForNewFolders();
+    // Start processing with user's tokens
+    const userServices = createUserServices(req.userTokens);
+    const automation = new UserAutomation(req.userTokens);
+    const folders = await userServices.googleDrive.pollForNewFolders();
     const folder = folders.find(f => f.id === folderId);
     
     if (!folder) {
       return res.status(404).json({ success: false, error: 'Folder not found' });
     }
     
-    // Process in background
+    // Process in background with user tokens
     automation.processFolder(folder).then(() => {
       console.log(`Folder ${folder.name} processed successfully`);
     }).catch(error => {
