@@ -20,7 +20,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm install --production
+RUN npm install --no-optional --legacy-peer-deps
 
 # Copy source code
 COPY . .
