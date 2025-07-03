@@ -89,15 +89,40 @@ class GoogleDriveService {
     }
   }
 
-  async uploadFile(filePath, fileName, parentFolderId) {
+  async uploadFile(filePath, fileName, parentFolderId, mimeType = null) {
     try {
+      // Auto-detect MIME type based on file extension
+      if (!mimeType) {
+        const ext = path.extname(fileName).toLowerCase();
+        switch (ext) {
+          case '.jpg':
+          case '.jpeg':
+            mimeType = 'image/jpeg';
+            break;
+          case '.png':
+            mimeType = 'image/png';
+            break;
+          case '.csv':
+            mimeType = 'text/csv';
+            break;
+          case '.json':
+            mimeType = 'application/json';
+            break;
+          case '.md':
+            mimeType = 'text/markdown';
+            break;
+          default:
+            mimeType = 'application/octet-stream';
+        }
+      }
+      
       const fileMetadata = {
         name: fileName,
         parents: [parentFolderId]
       };
       
       const media = {
-        mimeType: 'image/jpeg',
+        mimeType: mimeType,
         body: fs.createReadStream(filePath)
       };
       
@@ -107,10 +132,88 @@ class GoogleDriveService {
         fields: 'id'
       });
       
-      logger.info('File uploaded successfully', { fileId: response.data.id, fileName });
+      logger.info('File uploaded successfully', { fileId: response.data.id, fileName, mimeType });
       return response.data.id;
     } catch (error) {
       logger.error('Error uploading file', { error: error.message, fileName });
+      throw error;
+    }
+  }
+
+  async createFolder(folderName, parentFolderId) {
+    try {
+      const fileMetadata = {
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+        parents: [parentFolderId]
+      };
+      
+      const response = await this.drive.files.create({
+        resource: fileMetadata,
+        fields: 'id'
+      });
+      
+      logger.info('Folder created successfully', { folderId: response.data.id, folderName });
+      return response.data.id;
+    } catch (error) {
+      logger.error('Error creating folder', { error: error.message, folderName });
+      throw error;
+    }
+  }
+
+  async uploadProcessedFiles(sku, exportPath, originalFolderId) {
+    try {
+      // Create a "processed" subfolder in the original folder
+      const processedFolderId = await this.createFolder(`${sku}-processed`, originalFolderId);
+      
+      const uploadResults = [];
+      
+      // Upload CSV file
+      const csvPath = path.join(exportPath, 'etsy-products.csv');
+      if (await fs.pathExists(csvPath)) {
+        const csvFileId = await this.uploadFile(csvPath, 'etsy-products.csv', processedFolderId);
+        uploadResults.push({ type: 'csv', fileId: csvFileId });
+      }
+      
+      // Upload JSON file
+      const jsonPath = path.join(exportPath, `product-${sku}.json`);
+      if (await fs.pathExists(jsonPath)) {
+        const jsonFileId = await this.uploadFile(jsonPath, `product-${sku}.json`, processedFolderId);
+        uploadResults.push({ type: 'json', fileId: jsonFileId });
+      }
+      
+      // Upload listing guide
+      const guidePath = path.join(exportPath, `listing-guide-${sku}.md`);
+      if (await fs.pathExists(guidePath)) {
+        const guideFileId = await this.uploadFile(guidePath, `listing-guide-${sku}.md`, processedFolderId);
+        uploadResults.push({ type: 'guide', fileId: guideFileId });
+      }
+      
+      // Upload processed images
+      const imagesDir = path.join(exportPath, 'images', sku);
+      if (await fs.pathExists(imagesDir)) {
+        const imageFiles = await fs.readdir(imagesDir);
+        
+        for (const imageFile of imageFiles) {
+          const imagePath = path.join(imagesDir, imageFile);
+          const imageFileId = await this.uploadFile(imagePath, imageFile, processedFolderId);
+          uploadResults.push({ type: 'image', fileId: imageFileId, fileName: imageFile });
+        }
+      }
+      
+      logger.info('All processed files uploaded successfully', { 
+        sku, 
+        processedFolderId, 
+        uploadCount: uploadResults.length,
+        uploads: uploadResults
+      });
+      
+      return {
+        processedFolderId,
+        uploads: uploadResults
+      };
+    } catch (error) {
+      logger.error('Error uploading processed files', { error: error.message, sku });
       throw error;
     }
   }

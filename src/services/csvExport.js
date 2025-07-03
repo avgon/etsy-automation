@@ -94,7 +94,7 @@ class CSVExportService {
       escapeCSV(productData.price),                    // PRICE
       escapeCSV('USD'),                                // CURRENCY_CODE
       escapeCSV(productData.quantity || 1),           // QUANTITY
-      escapeCSV(Array.isArray(productData.tags) ? productData.tags.join(',') : productData.tags), // TAGS
+      escapeCSV(Array.isArray(productData.tags) ? productData.tags.join(', ') : productData.tags), // TAGS
       escapeCSV(this.inferMaterials(productData)),    // MATERIALS
       ...images.map(escapeCSV),                        // IMAGE1-IMAGE10
       escapeCSV(''),                                   // VARIATION 1 TYPE

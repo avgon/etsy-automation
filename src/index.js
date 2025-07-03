@@ -93,17 +93,19 @@ class EtsyAutomation {
       const folderWorkDir = path.join(this.workingDir, folder.id);
       await fs.ensureDir(folderWorkDir);
 
-      const processedImages = [];
-      
-      // Process each image
+      // First download all original images
+      const downloadedImages = [];
       for (const image of images) {
         try {
-          const processedImagePath = await this.processImage(image, folderWorkDir, folder.name);
-          if (processedImagePath) {
-            processedImages.push(processedImagePath);
-          }
+          const originalPath = path.join(folderWorkDir, `original_${image.name}`);
+          await this.googleDrive.downloadFile(image.id, `original_${image.name}`, folderWorkDir);
+          downloadedImages.push({
+            originalPath,
+            imageId: image.id,
+            imageName: image.name
+          });
         } catch (error) {
-          logger.error('Error processing individual image', { 
+          logger.error('Error downloading image', { 
             error: error.message, 
             imageId: image.id, 
             imageName: image.name 
@@ -111,12 +113,32 @@ class EtsyAutomation {
         }
       }
 
-      if (processedImages.length > 0) {
-        // Generate SEO content with SKU and all processed images
-        const seoContent = await this.generateSEOContent(folder.name, processedImages, sku);
+      let processedImages = [];
+      
+      if (downloadedImages.length > 0) {
+        // Generate SEO content first using original images
+        const seoContent = await this.generateSEOContent(folder.name, downloadedImages.map(img => img.originalPath), sku);
         
-        // Create Etsy listing with SKU
-        await this.createEtsyListing(seoContent, processedImages, folder.name, sku);
+        // Then process images with SEO context
+        for (const imageData of downloadedImages) {
+          try {
+            const processedImagePath = await this.processImageWithSEO(imageData, folderWorkDir, seoContent);
+            if (processedImagePath) {
+              processedImages.push(processedImagePath);
+            }
+          } catch (error) {
+            logger.error('Error processing image with SEO', { 
+              error: error.message, 
+              imageId: imageData.imageId, 
+              imageName: imageData.imageName 
+            });
+          }
+        }
+        
+        // Create Etsy listing with processed images
+        if (processedImages.length > 0) {
+          await this.createEtsyListing(seoContent, processedImages, folder.name, sku);
+        }
       }
 
       // Copy processed images to exports before cleanup
@@ -135,6 +157,30 @@ class EtsyAutomation {
       // Clean up working directory
       await fs.remove(folderWorkDir);
       
+      // Upload processed files to Google Drive
+      if (processedImages.length > 0) {
+        try {
+          const uploadResult = await this.googleDrive.uploadProcessedFiles(
+            sku, 
+            path.join(__dirname, '../exports'),
+            folder.id
+          );
+          
+          logger.info('Processed files uploaded to Google Drive', { 
+            sku,
+            processedFolderId: uploadResult.processedFolderId,
+            uploadCount: uploadResult.uploads.length
+          });
+          
+          console.log('☁️ Google Drive\'a yüklendi!');
+          console.log('📁 Processed Klasör ID:', uploadResult.processedFolderId);
+          console.log('📂 Yüklenen dosya sayısı:', uploadResult.uploads.length);
+        } catch (error) {
+          logger.error('Error uploading to Google Drive', { error: error.message, sku });
+          console.log('⚠️ Google Drive upload hatası:', error.message);
+        }
+      }
+      
       logger.info('Folder processing completed', { 
         folderId: folder.id, 
         processedImages: processedImages.length,
@@ -146,6 +192,74 @@ class EtsyAutomation {
         error: error.message, 
         folderId: folder.id 
       });
+    }
+  }
+
+  async processImageWithSEO(imageData, workingDir, seoContent) {
+    try {
+      logger.info('Processing image with SEO context', { 
+        imageId: imageData.imageId, 
+        imageName: imageData.imageName,
+        productTitle: seoContent.title 
+      });
+      
+      let processedPath;
+      
+      // Check if background processing is enabled
+      if (config.processing.addBackground) {
+        // Add background using SEO context
+        const backgroundPath = path.join(workingDir, `background_${imageData.imageName}`);
+        
+        const backgroundOptions = {
+          type: config.processing.backgroundType,
+          color: config.processing.backgroundColor,
+          gradientColors: config.processing.gradientColors,
+          backgroundImagePath: config.processing.backgroundImagePath,
+          removeBackground: config.processing.removeBackground,
+          seoContext: {
+            title: seoContent.title,
+            description: seoContent.description,
+            tags: seoContent.tags,
+            categories: seoContent.categories
+          }
+        };
+        
+        await this.imageProcessor.addBackground(imageData.originalPath, backgroundPath, backgroundOptions);
+        
+        // Then resize the image with background
+        processedPath = await this.imageProcessor.resizeImage(
+          backgroundPath,
+          path.join(workingDir, `processed_${imageData.imageName}`),
+          3000
+        );
+        
+        logger.info('Image processed with SEO-informed background', { 
+          imageId: imageData.imageId, 
+          backgroundType: config.processing.backgroundType,
+          processedPath,
+          seoTitle: seoContent.title
+        });
+      } else {
+        // Skip background processing, just resize the original image
+        processedPath = await this.imageProcessor.resizeImage(
+          imageData.originalPath,
+          path.join(workingDir, `processed_${imageData.imageName}`),
+          3000
+        );
+        
+        logger.info('Image processed without background', { 
+          imageId: imageData.imageId, 
+          processedPath 
+        });
+      }
+      
+      return processedPath;
+    } catch (error) {
+      logger.error('Error processing image with SEO', { 
+        error: error.message, 
+        imageId: imageData.imageId 
+      });
+      return null;
     }
   }
 
