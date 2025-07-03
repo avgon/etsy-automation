@@ -1,17 +1,17 @@
-# Node.js 18 base image
-FROM node:18-alpine
+# Node.js 18 base image (using debian instead of alpine for Sharp compatibility)
+FROM node:18-slim
 
 # Install system dependencies for Sharp and node-gyp
-RUN apk add --no-cache \
-    vips-dev \
-    vips \
+RUN apt-get update && apt-get install -y \
+    libvips-dev \
     python3 \
     make \
     g++ \
-    sqlite \
-    sqlite-dev \
-    pkgconfig \
-    curl
+    sqlite3 \
+    libsqlite3-dev \
+    pkg-config \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
@@ -19,8 +19,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --no-optional --legacy-peer-deps
+# Install dependencies with Sharp rebuild
+RUN npm install --legacy-peer-deps
+RUN npm rebuild sharp
 
 # Copy source code
 COPY . .
