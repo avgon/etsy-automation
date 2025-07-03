@@ -236,7 +236,29 @@
         
         async function api(endpoint, options = {}) {
             try {
-                const response = await fetch(`/api${endpoint}`, options);
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
+                const headers = {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                };
+                
+                const response = await fetch(`/api${endpoint}`, {
+                    ...options,
+                    headers
+                });
+                
+                if (response.status === 401) {
+                    localStorage.removeItem('token');
+                    window.location.href = '/login.html';
+                    return;
+                }
+                
                 const data = await response.json();
                 return data;
             } catch (error) {
@@ -384,6 +406,12 @@
         
         // Initialize
         window.onload = function() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = '/login.html';
+                return;
+            }
+            
             refreshAll();
             log('🚀 Dashboard initialized!');
         };

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug - Token Status</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f0f0f0; }
+        .token { background: #fff; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug - Token Status</h1>
+    
+    <div class="token">
+        <h3>LocalStorage Token:</h3>
+        <div id="localStorage"></div>
+    </div>
+    
+    <div class="token">
+        <h3>Cookies:</h3>
+        <div id="cookies"></div>
+    </div>
+    
+    <div class="token">
+        <h3>API Test:</h3>
+        <div id="apiTest"></div>
+        <button onclick="testAPI()">Test API Call</button>
+    </div>
+    
+    <div style="margin-top: 20px;">
+        <a href="/login.html">← Back to Login</a> |
+        <a href="/dashboard">→ Dashboard</a>
+    </div>
+
+    <script>
+        function displayTokens() {
+            const token = localStorage.getItem('token');
+            document.getElementById('localStorage').innerHTML = token ? 
+                `<div class="success">✅ Token found: ${token.substring(0, 20)}...</div>` :
+                `<div class="error">❌ No token in localStorage</div>`;
+                
+            document.getElementById('cookies').innerHTML = document.cookie || 'No cookies';
+        }
+        
+        async function testAPI() {
+            const token = localStorage.getItem('token');
+            const testDiv = document.getElementById('apiTest');
+            
+            if (!token) {
+                testDiv.innerHTML = '<div class="error">❌ No token to test</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/status', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    testDiv.innerHTML = `<div class="success">✅ API works: ${JSON.stringify(data)}</div>`;
+                } else {
+                    testDiv.innerHTML = `<div class="error">❌ API error (${response.status}): ${JSON.stringify(data)}</div>`;
+                }
+            } catch (error) {
+                testDiv.innerHTML = `<div class="error">❌ Network error: ${error.message}</div>`;
+            }
+        }
+        
+        displayTokens();
+    </script>
+</body>
+</html>
