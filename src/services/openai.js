@@ -133,18 +133,22 @@ Work your magic! Give me the longest, most powerful Etsy listing possible.`;
       const messageContent = [{ type: "text", text: prompt }];
       
       // Add all product images for analysis
-      for (const imagePath of imagePaths) {
-        try {
-          const imageBase64 = require('fs').readFileSync(imagePath, 'base64');
-          messageContent.push({
-            type: "image_url",
-            image_url: {
-              url: `data:image/jpeg;base64,${imageBase64}`
-            }
-          });
-        } catch (imageError) {
-          logger.warn('Could not load image for SEO analysis', { imagePath, error: imageError.message });
+      if (Array.isArray(imagePaths)) {
+        for (const imagePath of imagePaths) {
+          try {
+            const imageBase64 = require('fs').readFileSync(imagePath, 'base64');
+            messageContent.push({
+              type: "image_url",
+              image_url: {
+                url: `data:image/jpeg;base64,${imageBase64}`
+              }
+            });
+          } catch (imageError) {
+            logger.warn('Could not load image for SEO analysis', { imagePath, error: imageError.message });
+          }
         }
+      } else {
+        logger.warn('imagePaths is not an array', { imagePaths, type: typeof imagePaths });
       }
 
       // Use GPT-4o with vision for image analysis

@@ -112,8 +112,8 @@ class EtsyAutomation {
       }
 
       if (processedImages.length > 0) {
-        // Generate SEO content with SKU
-        const seoContent = await this.generateSEOContent(folder.name, processedImages[0], sku);
+        // Generate SEO content with SKU and all processed images
+        const seoContent = await this.generateSEOContent(folder.name, processedImages, sku);
         
         // Create Etsy listing with SKU
         await this.createEtsyListing(seoContent, processedImages, folder.name, sku);
@@ -210,7 +210,7 @@ class EtsyAutomation {
     }
   }
 
-  async generateSEOContent(productName, sampleImagePath, sku) {
+  async generateSEOContent(productName, imagePaths, sku) {
     try {
       logger.info('Generating SEO content', { productName, sku });
       
@@ -222,6 +222,7 @@ class EtsyAutomation {
       
       const seoContent = await this.openai.generateEtsySEO(
         productInfo, 
+        imagePaths,
         config.openai.customGptId
       );
       
