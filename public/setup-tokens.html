@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup API Tokens - Etsy Automation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .setup-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .welcome {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .welcome h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .welcome p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .form-section {
+            margin-bottom: 30px;
+            padding: 25px;
+            border: 2px solid #f0f0f0;
+            border-radius: 15px;
+        }
+
+        .form-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .form-section h3::before {
+            content: "🔑";
+            margin-right: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .help-text {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .help-text a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .help-text a:hover {
+            text-decoration: underline;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            margin-top: 10px;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #fcc;
+        }
+
+        .success {
+            background: #efe;
+            color: #393;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #cfc;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .logout-btn:hover {
+            background: #c82333;
+        }
+
+        @media (max-width: 768px) {
+            .setup-container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-container">
+        <div class="header">
+            <h1>🛍️ Etsy Automation</h1>
+            <p>Setup Your API Tokens</p>
+        </div>
+
+        <div class="content">
+            <div class="nav-buttons">
+                <div></div>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+
+            <div class="welcome">
+                <h2>Welcome! Let's get you set up</h2>
+                <p>Configure your API tokens to start using the automation system</p>
+            </div>
+
+            <div id="message"></div>
+
+            <form id="tokensForm">
+                <!-- Google Drive API -->
+                <div class="form-section">
+                    <h3>Google Drive API</h3>
+                    
+                    <div class="form-group">
+                        <label for="googleClientId">Google Client ID</label>
+                        <input type="text" id="googleClientId" required>
+                        <div class="help-text">
+                            Get from <a href="https://console.developers.google.com/" target="_blank">Google Cloud Console</a>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="googleClientSecret">Google Client Secret</label>
+                        <input type="password" id="googleClientSecret" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="googleRefreshToken">Google Refresh Token</label>
+                        <textarea id="googleRefreshToken" required></textarea>
+                        <div class="help-text">
+                            Generate using OAuth2 playground or our setup script
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="googleDriveFolderId">Google Drive Folder ID</label>
+                        <input type="text" id="googleDriveFolderId" required>
+                        <div class="help-text">
+                            Main folder ID where your product folders are stored
+                        </div>
+                    </div>
+                </div>
+
+                <!-- OpenAI API -->
+                <div class="form-section">
+                    <h3>OpenAI API</h3>
+                    
+                    <div class="form-group">
+                        <label for="openaiApiKey">OpenAI API Key</label>
+                        <input type="password" id="openaiApiKey" required>
+                        <div class="help-text">
+                            Get from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="customGptId">Custom GPT ID (Optional)</label>
+                        <input type="text" id="customGptId">
+                        <div class="help-text">
+                            Your custom GPT ID for SEO optimization (e.g., g-abc123...)
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn">Save Configuration</button>
+                <button type="button" class="btn btn-secondary" onclick="skipSetup()">Skip for Now</button>
+            </form>
+
+            <div class="loading" id="loading">
+                <p>⏳ Saving configuration...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let userToken = localStorage.getItem('token');
+        
+        if (!userToken) {
+            window.location.href = '/login.html';
+        }
+
+        function showMessage(message, type = 'error') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="${type}">${message}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        function showLoading(show = true) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('tokensForm').style.display = show ? 'none' : 'block';
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+        }
+
+        function skipSetup() {
+            window.location.href = '/dashboard';
+        }
+
+        // Load existing tokens
+        async function loadTokens() {
+            try {
+                const response = await fetch('/api/auth/tokens', {
+                    headers: {
+                        'Authorization': `Bearer ${userToken}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const tokens = await response.json();
+                    
+                    if (tokens.google_client_id) {
+                        document.getElementById('googleClientId').value = tokens.google_client_id;
+                    }
+                    if (tokens.google_client_secret) {
+                        document.getElementById('googleClientSecret').value = tokens.google_client_secret;
+                    }
+                    if (tokens.google_refresh_token) {
+                        document.getElementById('googleRefreshToken').value = tokens.google_refresh_token;
+                    }
+                    if (tokens.google_drive_folder_id) {
+                        document.getElementById('googleDriveFolderId').value = tokens.google_drive_folder_id;
+                    }
+                    if (tokens.openai_api_key) {
+                        document.getElementById('openaiApiKey').value = tokens.openai_api_key;
+                    }
+                    if (tokens.custom_gpt_id) {
+                        document.getElementById('customGptId').value = tokens.custom_gpt_id;
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading tokens:', error);
+            }
+        }
+
+        // Save tokens
+        document.getElementById('tokensForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const tokens = {
+                google_client_id: document.getElementById('googleClientId').value,
+                google_client_secret: document.getElementById('googleClientSecret').value,
+                google_refresh_token: document.getElementById('googleRefreshToken').value,
+                google_drive_folder_id: document.getElementById('googleDriveFolderId').value,
+                openai_api_key: document.getElementById('openaiApiKey').value,
+                custom_gpt_id: document.getElementById('customGptId').value
+            };
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/auth/tokens', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${userToken}`
+                    },
+                    body: JSON.stringify(tokens)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Configuration saved successfully!', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/dashboard';
+                    }, 1500);
+                } else {
+                    showMessage(data.error || 'Failed to save configuration');
+                    showLoading(false);
+                }
+            } catch (error) {
+                showMessage('Network error. Please try again.');
+                showLoading(false);
+            }
+        });
+
+        // Load existing tokens on page load
+        loadTokens();
+    </script>
+</body>
+</html>

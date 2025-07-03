@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Site Access - Etsy Automation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .access-container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .lock-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input[type="password"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #fcc;
+        }
+
+        .success {
+            background: #efe;
+            color: #393;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #cfc;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .info {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #bbdefb;
+            font-size: 0.9em;
+        }
+
+        @media (max-width: 480px) {
+            .access-container {
+                padding: 30px 20px;
+            }
+            
+            h1 {
+                font-size: 1.7em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="access-container">
+        <div class="lock-icon">🔐</div>
+        <h1>Private Access</h1>
+        <p class="subtitle">Enter site password to continue</p>
+
+        <div class="info">
+            <strong>🛡️ Protected Site</strong><br>
+            This automation system requires a password for security.
+        </div>
+
+        <div id="message"></div>
+
+        <form id="siteLoginForm">
+            <div class="form-group">
+                <label for="sitePassword">Site Password</label>
+                <input type="password" id="sitePassword" placeholder="Enter password" required autofocus>
+            </div>
+
+            <button type="submit" class="btn">Access Site</button>
+        </form>
+
+        <div class="loading" id="loading">
+            <p>🔓 Authenticating...</p>
+        </div>
+    </div>
+
+    <script>
+        function showMessage(message, type = 'error') {
+            const messageDiv = document.getElementById('message');
+            messageDiv.innerHTML = `<div class="${type}">${message}</div>`;
+            setTimeout(() => {
+                messageDiv.innerHTML = '';
+            }, 5000);
+        }
+
+        function showLoading(show = true) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('siteLoginForm').style.display = show ? 'none' : 'block';
+        }
+
+        // Site password form
+        document.getElementById('siteLoginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const password = document.getElementById('sitePassword').value;
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/site-auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ password })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Access granted! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                } else {
+                    showMessage(data.error || 'Invalid password');
+                    showLoading(false);
+                }
+            } catch (error) {
+                showMessage('Network error. Please try again.');
+                showLoading(false);
+            }
+        });
+
+        // Auto-focus password field
+        document.getElementById('sitePassword').focus();
+
+        // Check if already authenticated
+        if (document.cookie.includes('sitePassword=')) {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>
