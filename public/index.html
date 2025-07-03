@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 Etsy Automation Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .folder-item {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            padding: 15px;
+            border: 2px solid #f0f0f0;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .folder-info {
+            flex-grow: 1;
+        }
+        
+        .folder-name {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .folder-id {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .log {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .export-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+        }
+        
+        .success {
+            color: #4CAF50;
+            font-weight: 600;
+        }
+        
+        .error {
+            color: #f44336;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Etsy Automation Dashboard</h1>
+            <p>AI-Powered Product Listing System</p>
+        </div>
+        
+        <div class="card">
+            <div class="status">
+                <div class="status-dot"></div>
+                <span><strong>Status:</strong> <span id="status">Checking...</span></span>
+            </div>
+            <button class="btn" onclick="refreshAll()">🔄 Refresh All</button>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h3>📁 Google Drive Folders</h3>
+                <div id="folders">Loading...</div>
+                <button class="btn" onclick="loadFolders()">Scan Folders</button>
+            </div>
+            
+            <div class="card">
+                <h3>🎨 Background Templates</h3>
+                <div id="backgrounds">Loading...</div>
+                <div class="upload-area" onclick="document.getElementById('bgUpload').click()">
+                    📤 Upload New Backgrounds
+                    <input type="file" id="bgUpload" multiple accept="image/*" style="display:none" onchange="uploadBackgrounds()">
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid">
+            <div class="card">
+                <h3>📊 Export Files</h3>
+                <div id="exports">Loading...</div>
+                <button class="btn" onclick="loadExports()">Refresh Exports</button>
+            </div>
+            
+            <div class="card">
+                <h3>📋 Activity Log</h3>
+                <div id="log" class="log">
+                    System ready...<br>
+                    Waiting for commands...<br>
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <h3>🔄 Processing...</h3>
+            <p>Please wait while the system processes your request.</p>
+        </div>
+    </div>
+
+    <script>
+        let logElement = document.getElementById('log');
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logElement.innerHTML += `[${timestamp}] ${message}<br>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+        
+        async function api(endpoint, options = {}) {
+            try {
+                const response = await fetch(`/api${endpoint}`, options);
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                log(`❌ API Error: ${error.message}`);
+                return { success: false, error: error.message };
+            }
+        }
+        
+        async function checkStatus() {
+            const result = await api('/status');
+            document.getElementById('status').textContent = result.success ? 'Online ✅' : 'Offline ❌';
+        }
+        
+        async function loadFolders() {
+            log('🔍 Scanning Google Drive folders...');
+            const result = await api('/folders');
+            const foldersDiv = document.getElementById('folders');
+            
+            if (result.success) {
+                foldersDiv.innerHTML = result.folders.map(folder => `
+                    <div class="folder-item">
+                        <div class="folder-info">
+                            <div class="folder-name">📁 ${folder.name}</div>
+                            <div class="folder-id">${folder.id}</div>
+                        </div>
+                        <button class="btn" onclick="processFolder('${folder.id}', '${folder.name}')">
+                            🚀 Process
+                        </button>
+                    </div>
+                `).join('');
+                log(`✅ Found ${result.folders.length} folders`);
+            } else {
+                foldersDiv.innerHTML = `<div class="error">Error: ${result.error}</div>`;
+                log(`❌ Error loading folders: ${result.error}`);
+            }
+        }
+        
+        async function processFolder(folderId, folderName) {
+            log(`🚀 Starting processing for: ${folderName}`);
+            document.getElementById('loading').style.display = 'block';
+            
+            const result = await api(`/process-folder/${folderId}`, {
+                method: 'POST'
+            });
+            
+            document.getElementById('loading').style.display = 'none';
+            
+            if (result.success) {
+                log(`✅ Processing started for: ${folderName}`);
+                setTimeout(() => {
+                    loadExports();
+                    log(`🔄 Auto-refreshing exports...`);
+                }, 5000);
+            } else {
+                log(`❌ Error processing folder: ${result.error}`);
+            }
+        }
+        
+        async function loadBackgrounds() {
+            const result = await api('/backgrounds');
+            const backgroundsDiv = document.getElementById('backgrounds');
+            
+            if (result.success) {
+                backgroundsDiv.innerHTML = result.backgrounds.map(bg => `
+                    <div class="export-item">
+                        <span>🖼️ ${bg}</span>
+                    </div>
+                `).join('') || '<div>No backgrounds uploaded</div>';
+            }
+        }
+        
+        async function uploadBackgrounds() {
+            const files = document.getElementById('bgUpload').files;
+            if (files.length === 0) return;
+            
+            const formData = new FormData();
+            for (let file of files) {
+                formData.append('backgrounds', file);
+            }
+            
+            log(`📤 Uploading ${files.length} background files...`);
+            
+            const response = await fetch('/api/upload-backgrounds', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                log(`✅ Uploaded: ${result.files.join(', ')}`);
+                loadBackgrounds();
+            } else {
+                log(`❌ Upload error: ${result.error}`);
+            }
+        }
+        
+        async function loadExports() {
+            const result = await api('/exports');
+            const exportsDiv = document.getElementById('exports');
+            
+            if (result.success) {
+                const exports = result.exports;
+                exportsDiv.innerHTML = `
+                    <div>
+                        <strong>📊 CSV Files (${exports.csv.length})</strong>
+                        ${exports.csv.map(file => `
+                            <div class="export-item">
+                                <span>📄 ${file}</span>
+                                <button class="btn" onclick="downloadFile('${file}')">Download</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div>
+                        <strong>🖼️ Image Folders (${exports.images.length})</strong>
+                        ${exports.images.map(folder => `
+                            <div class="export-item">
+                                <span>📁 ${folder}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            }
+        }
+        
+        function downloadFile(filename) {
+            window.open(`/api/export/${filename}`, '_blank');
+            log(`📥 Downloading: ${filename}`);
+        }
+        
+        async function refreshAll() {
+            log('🔄 Refreshing all data...');
+            await checkStatus();
+            await loadFolders();
+            await loadBackgrounds();
+            await loadExports();
+            log('✅ Refresh complete!');
+        }
+        
+        // Initialize
+        window.onload = function() {
+            refreshAll();
+            log('🚀 Dashboard initialized!');
+        };
+    </script>
+</body>
+</html>
