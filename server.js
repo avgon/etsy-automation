@@ -187,6 +187,10 @@ app.get('/setup-tokens', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'setup-tokens.html'));
 });
 
+app.get('/setup-guide.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'setup-guide.html'));
+});
+
 app.get('/dashboard', requireAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

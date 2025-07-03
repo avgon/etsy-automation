@@ -165,6 +165,17 @@
         <div class="header">
             <h1>🚀 Etsy Automation Dashboard</h1>
             <p>AI-Powered Product Listing System</p>
+            <div style="margin-top: 20px;">
+                <a href="/setup-guide.html" target="_blank" style="color: white; text-decoration: none; margin: 0 10px; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 20px; display: inline-block;">
+                    📚 Setup Guide
+                </a>
+                <a href="/setup-tokens" style="color: white; text-decoration: none; margin: 0 10px; padding: 8px 16px; background: rgba(255,255,255,0.2); border-radius: 20px; display: inline-block;">
+                    🔑 API Tokens
+                </a>
+                <button onclick="logout()" style="color: white; background: rgba(220,53,69,0.8); border: none; margin: 0 10px; padding: 8px 16px; border-radius: 20px; cursor: pointer;">
+                    🚪 Logout
+                </button>
+            </div>
         </div>
         
         <div class="card">
@@ -363,6 +374,12 @@
             await loadBackgrounds();
             await loadExports();
             log('✅ Refresh complete!');
+        }
+        
+        function logout() {
+            localStorage.removeItem('token');
+            document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            window.location.href = '/login.html';
         }
         
         // Initialize

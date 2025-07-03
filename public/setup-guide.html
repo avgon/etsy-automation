@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Guide - Etsy Automation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+            line-height: 1.6;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: 500;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+        }
+
+        .section h3 {
+            color: #667eea;
+            margin: 25px 0 15px 0;
+        }
+
+        .step {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+
+        .step h4 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .step ol, .step ul {
+            margin-left: 20px;
+        }
+
+        .step li {
+            margin-bottom: 8px;
+        }
+
+        .code {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #f39c12;
+        }
+
+        .info {
+            background: #cff4fc;
+            border: 1px solid #b8daff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid #0ea5e9;
+        }
+
+        .emoji {
+            font-size: 1.5em;
+            margin-right: 10px;
+        }
+
+        a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Setup Guide</h1>
+            <p>Complete API Configuration Instructions</p>
+        </div>
+
+        <div class="content">
+            <div class="nav-buttons">
+                <a href="/dashboard" class="btn btn-secondary">← Back to Dashboard</a>
+                <a href="/setup-tokens" class="btn btn-primary">Setup Tokens →</a>
+            </div>
+
+            <div class="section">
+                <h2><span class="emoji">🎯</span>Overview</h2>
+                <p>This guide will help you configure all the necessary API tokens to use the Etsy Automation system. You'll need to set up:</p>
+                <ul style="margin: 15px 0 0 30px;">
+                    <li><strong>Google Drive API</strong> - For monitoring folders and uploading processed files</li>
+                    <li><strong>OpenAI API</strong> - For image processing and SEO content generation</li>
+                    <li><strong>Custom GPT</strong> (Optional) - For enhanced Etsy SEO optimization</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2><span class="emoji">🔗</span>Google Drive API Setup</h2>
+                
+                <div class="step">
+                    <h4>Step 1: Create Google Cloud Project</h4>
+                    <ol>
+                        <li>Go to <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a></li>
+                        <li>Click "New Project" and create a project called "Etsy Automation"</li>
+                        <li>Wait for the project to be created and select it</li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <h4>Step 2: Enable Google Drive API</h4>
+                    <ol>
+                        <li>In the Cloud Console, go to "APIs & Services" → "Library"</li>
+                        <li>Search for "Google Drive API"</li>
+                        <li>Click on it and press "Enable"</li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <h4>Step 3: Create OAuth2 Credentials</h4>
+                    <ol>
+                        <li>Go to "APIs & Services" → "Credentials"</li>
+                        <li>Click "Create Credentials" → "OAuth client ID"</li>
+                        <li>Choose "Web application"</li>
+                        <li>Add these authorized redirect URIs:</li>
+                        <div class="code">http://localhost:3000/oauth2callback
+https://etsy-automation-production.up.railway.app/oauth2callback</div>
+                        <li>Save and copy your <strong>Client ID</strong> and <strong>Client Secret</strong></li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <h4>Step 4: Generate Refresh Token</h4>
+                    <ol>
+                        <li>Go to <a href="https://developers.google.com/oauthplayground/" target="_blank">OAuth 2.0 Playground</a></li>
+                        <li>Click the settings gear icon (⚙️) in the top right</li>
+                        <li>Check "Use your own OAuth credentials"</li>
+                        <li>Enter your Client ID and Client Secret from Step 3</li>
+                        <li>In the left panel, scroll down and select "Drive API v3"</li>
+                        <li>Choose "https://www.googleapis.com/auth/drive"</li>
+                        <li>Click "Authorize APIs"</li>
+                        <li>Sign in with your Google account and allow access</li>
+                        <li>Click "Exchange authorization code for tokens"</li>
+                        <li>Copy the <strong>Refresh Token</strong> that appears</li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <h4>Step 5: Get Your Google Drive Folder ID</h4>
+                    <ol>
+                        <li>Open Google Drive in your browser</li>
+                        <li>Navigate to the folder where you store your product images</li>
+                        <li>Look at the URL: <code>https://drive.google.com/drive/folders/<strong>FOLDER_ID_HERE</strong></code></li>
+                        <li>Copy the folder ID from the URL</li>
+                    </ol>
+                </div>
+
+                <div class="warning">
+                    <strong>⚠️ Important:</strong> Make sure the Google account you use has access to the folder you want to monitor!
+                </div>
+            </div>
+
+            <div class="section">
+                <h2><span class="emoji">🤖</span>OpenAI API Setup</h2>
+                
+                <div class="step">
+                    <h4>Step 1: Get OpenAI API Key</h4>
+                    <ol>
+                        <li>Go to <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a></li>
+                        <li>Sign in or create an account</li>
+                        <li>Click "Create new secret key"</li>
+                        <li>Give it a name like "Etsy Automation"</li>
+                        <li>Copy the API key (starts with <code>sk-</code>)</li>
+                    </ol>
+                </div>
+
+                <div class="step">
+                    <h4>Step 2: Set up Billing (Required)</h4>
+                    <ol>
+                        <li>Go to <a href="https://platform.openai.com/account/billing" target="_blank">Billing Settings</a></li>
+                        <li>Add a payment method</li>
+                        <li>Set usage limits if desired</li>
+                    </ol>
+                </div>
+
+                <div class="info">
+                    <strong>💡 Cost Estimate:</strong> Processing typically costs $0.50-2.00 per product (including image generation and SEO content).
+                </div>
+            </div>
+
+            <div class="section">
+                <h2><span class="emoji">🎯</span>Custom GPT Setup (Optional)</h2>
+                
+                <div class="step">
+                    <h4>Create a Custom GPT for Etsy SEO</h4>
+                    <ol>
+                        <li>Go to <a href="https://chat.openai.com/gpts/discovery" target="_blank">ChatGPT GPTs</a></li>
+                        <li>Click "Create a GPT"</li>
+                        <li>Train it with Etsy SEO best practices</li>
+                        <li>Once created, copy the GPT ID from the URL (e.g., <code>g-abc123...</code>)</li>
+                    </ol>
+                </div>
+
+                <div class="info">
+                    <strong>💡 Pro Tip:</strong> You can skip this for now and use the default SEO generation. Add it later for enhanced results.
+                </div>
+            </div>
+
+            <div class="section">
+                <h2><span class="emoji">✅</span>Final Steps</h2>
+                
+                <div class="step">
+                    <h4>Enter Your Tokens</h4>
+                    <ol>
+                        <li>Once you have all the tokens above, click "Setup Tokens" below</li>
+                        <li>Fill in all the required fields</li>
+                        <li>Test the connection by browsing folders</li>
+                        <li>Start processing your first product!</li>
+                    </ol>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2><span class="emoji">🆘</span>Need Help?</h2>
+                <p>If you encounter any issues during setup:</p>
+                <ul style="margin: 15px 0 0 30px;">
+                    <li>Double-check all your API credentials</li>
+                    <li>Ensure the Google account has proper folder permissions</li>
+                    <li>Verify your OpenAI account has billing set up</li>
+                    <li>Contact support if issues persist</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center; margin-top: 40px;">
+                <a href="/setup-tokens" class="btn btn-primary" style="font-size: 18px; padding: 15px 30px;">
+                    🚀 Setup Your Tokens Now
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
