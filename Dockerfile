@@ -23,14 +23,11 @@ COPY package*.json ./
 RUN npm install --legacy-peer-deps
 RUN npm rebuild sharp
 
-# Copy source code
+# Copy source code (includes test-backgrounds automatically)
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p uploads temp exports logs public test-backgrounds
-
-# Make sure test-backgrounds directory exists and has the right files
-COPY test-backgrounds/ ./test-backgrounds/
+RUN mkdir -p uploads temp exports logs public
 
 # Expose port
 EXPOSE 3000
