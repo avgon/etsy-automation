@@ -4,6 +4,7 @@ const GoogleDriveService = require('./services/googleDrive');
 const OpenAIService = require('./services/openai');
 const ImageProcessor = require('./services/imageProcessor');
 const EtsyService = require('./services/etsy');
+const EtsySeleniumService = require('./services/etsySelenium');
 const CSVExportService = require('./services/csvExport');
 const EtsyBulkUploadService = require('./services/etsyBulkUpload');
 const config = require('./config');
@@ -15,6 +16,7 @@ class EtsyAutomation {
     this.openai = new OpenAIService();
     this.imageProcessor = new ImageProcessor();
     this.etsy = new EtsyService();
+    this.etsySelenium = new EtsySeleniumService();
     this.csvExporter = new CSVExportService();
     this.etsyBulkUploader = new EtsyBulkUploadService();
     this.processedFolders = new Set();
@@ -434,8 +436,36 @@ class EtsyAutomation {
         sku: sku
       };
       
-      if (this.useEtsyAPI) {
-        // Etsy API kullan (gelecekte)
+      // Check listing method priority: Selenium > API > CSV
+      const useSelenium = process.env.USE_ETSY_SELENIUM === 'true';
+      
+      if (useSelenium) {
+        // Selenium otomatik listeleme
+        try {
+          await this.etsySelenium.initialize();
+          const result = await this.etsySelenium.createListing(productData, imagePaths, sku);
+          await this.etsySelenium.close();
+          
+          logger.info('Etsy listing created via Selenium', { 
+            url: result.url,
+            sku 
+          });
+          
+          console.log('\n🚀 SELENIUM İLE OTOMATİK LİSTELENDİ!');
+          console.log('🔗 Etsy URL:', result.url);
+          console.log('🏷️ SKU:', sku);
+          console.log('✅ Fotoğraflar ve detaylar otomatik yüklendi!');
+          
+          return result;
+        } catch (seleniumError) {
+          logger.error('Selenium failed, falling back to CSV export', { 
+            error: seleniumError.message, 
+            sku 
+          });
+          // Selenium hata verirse CSV'ye düş
+        }
+      } else if (this.useEtsyAPI) {
+        // Etsy API kullan
         const result = await this.etsy.createCompleteProduct(productData, imagePaths);
         logger.info('Etsy listing created via API', { 
           listingId: result.listingId,
@@ -443,10 +473,11 @@ class EtsyAutomation {
           sku 
         });
         return result;
-      } else {
-        // CSV export kullan
-        const exportResult = await this.csvExporter.exportProduct(productData, imagePaths, sku);
-        const guideFile = await this.csvExporter.createManualListingGuide(productData, sku);
+      }
+      
+      // CSV export (fallback)
+      const exportResult = await this.csvExporter.exportProduct(productData, imagePaths, sku);
+      const guideFile = await this.csvExporter.createManualListingGuide(productData, sku);
         
         logger.info('Product exported for manual listing', { 
           sku,

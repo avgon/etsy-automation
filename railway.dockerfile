@@ -9,7 +9,14 @@ RUN apk add --no-cache \
     sqlite \
     sqlite-dev \
     pkgconfig \
-    curl
+    curl \
+    chromium \
+    chromium-chromedriver \
+    xvfb
+
+# Set Chrome path for Alpine
+ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROME_PATH=/usr/bin/chromium-browser
 
 WORKDIR /app
 
