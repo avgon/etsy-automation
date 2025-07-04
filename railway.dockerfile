@@ -1,16 +1,15 @@
-FROM node:18-slim
+FROM node:18-alpine
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libvips-dev \
+# Install system dependencies for Alpine
+RUN apk add --no-cache \
+    vips-dev \
     python3 \
     make \
     g++ \
-    sqlite3 \
-    libsqlite3-dev \
-    pkg-config \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+    sqlite \
+    sqlite-dev \
+    pkgconfig \
+    curl
 
 WORKDIR /app
 
