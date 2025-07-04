@@ -478,32 +478,31 @@ class EtsyAutomation {
       // CSV export (fallback)
       const exportResult = await this.csvExporter.exportProduct(productData, imagePaths, sku);
       const guideFile = await this.csvExporter.createManualListingGuide(productData, sku);
-        
-        logger.info('Product exported for manual listing', { 
-          sku,
-          csvFile: exportResult.csvFile,
-          guideFile,
-          imageCount: exportResult.imageCount
-        });
-        
-        console.log('\n🎉 ÜRÜN HAZIR!');
-        console.log('📁 CSV Dosyası:', exportResult.csvFile);
-        console.log('📋 Listeleme Rehberi:', guideFile);
-        console.log('🖼️ İşlenmiş Görsel Sayısı:', exportResult.imageCount);
-        console.log('🏷️ SKU:', sku);
-        console.log('💰 Önerilen Fiyat:', productData.price, 'USD');
-        console.log('\n📌 Manuel listeleme için exports klasörünü kontrol edin!');
-        
-        return {
-          sku,
-          exported: true,
-          files: {
-            csv: exportResult.csvFile,
-            guide: guideFile,
-            images: imagePaths
-          }
-        };
-      }
+      
+      logger.info('Product exported for manual listing', { 
+        sku,
+        csvFile: exportResult.csvFile,
+        guideFile,
+        imageCount: exportResult.imageCount
+      });
+      
+      console.log('\n🎉 ÜRÜN HAZIR!');
+      console.log('📁 CSV Dosyası:', exportResult.csvFile);
+      console.log('📋 Listeleme Rehberi:', guideFile);
+      console.log('🖼️ İşlenmiş Görsel Sayısı:', exportResult.imageCount);
+      console.log('🏷️ SKU:', sku);
+      console.log('💰 Önerilen Fiyat:', productData.price, 'USD');
+      console.log('\n📌 Manuel listeleme için exports klasörünü kontrol edin!');
+      
+      return {
+        sku,
+        exported: true,
+        files: {
+          csv: exportResult.csvFile,
+          guide: guideFile,
+          images: imagePaths
+        }
+      };
     } catch (error) {
       logger.error('Error processing product', { error: error.message, sku });
       throw error;
