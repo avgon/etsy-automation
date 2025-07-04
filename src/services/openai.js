@@ -93,41 +93,37 @@ class OpenAIService {
     }
   }
 
-  async generateEtsySEO(productInfo, imagePaths) {
+  async generateEtsySEO(productInfo, imagePaths, customGptId) {
     try {
-      const prompt = `ULTRA LISTING MODE ACTIVATED 🔥
+      const prompt = `ULTIMATE LISTING MODE ACTIVATED! You are my Killer SEO GPT for Etsy.
 
-Analyze these product images and create a KILLER Etsy SEO package. 
+Product Information:
+- Type: ${productInfo.type}
+- Name: ${productInfo.name} 
+- Images: ${imagePaths.length} photos
 
-I need you to operate as the expert Killer Listing SEO Creator and provide FULL SEO optimization:
+Analyze these product images and create FULL SEO optimization using your proven Killer Listing methodology:
 
-Product Type: ${productInfo.type}
-Image Count: ${imagePaths.length} photos
+1. TITLE: Create a compelling 130-140 character title with maximum keyword density
+2. TAGS: Provide exactly 13 tags, each max 20 characters. PRESERVE SPACES if multi-word tags work better for SEO!
+3. DESCRIPTION: Write your signature conversion-focused description
+4. PRICE RANGE: Suggest competitive pricing
+5. CATEGORIES: Select best Etsy categories
 
-CRITICAL REQUIREMENTS:
-- TITLE: Must be 130-140 characters (NOT shorter!)
-- TAGS: No dashes or special characters (clean words only)
-- Use maximum space for SEO power
-- Pack with high-search keywords
+CRITICAL: Format tags exactly as needed for best Etsy SEO - keep spaces in tags like "silver jewelry" if better than "silverjewelry".
 
-Please provide your complete SEO package in this exact format:
+Provide your complete SEO package in this exact format:
 
-TITLE: [Write a LONG 130-140 character title using many descriptive keywords]
+TITLE: [your 130-140 char title]
 
-TAGS: [13 clean strategic tags separated by commas, each max 20 characters, NO DASHES]
+TAGS: [tag1], [tag2], [tag3], [tag4], [tag5], [tag6], [tag7], [tag8], [tag9], [tag10], [tag11], [tag12], [tag13]
 
-DESCRIPTION: [Your best compelling, keyword-rich description]
+DESCRIPTION: 
+[your full description]
 
-PRICE RANGE: [Suggested price range like 19.99-39.99]
+PRICE RANGE: [price]
 
-CATEGORIES: [2 relevant Etsy categories]
-
-IMPORTANT: 
-- Title MUST use 130-140 characters (current trend for max SEO)
-- Tags must be clean words without dashes or special characters
-- Use ALL available space for maximum keyword density
-
-Work your magic! Give me the longest, most powerful Etsy listing possible.`;
+CATEGORIES: [category1], [category2]`;
 
       // Prepare messages with images
       const messageContent = [{ type: "text", text: prompt }];
@@ -137,10 +133,13 @@ Work your magic! Give me the longest, most powerful Etsy listing possible.`;
         for (const imagePath of imagePaths) {
           try {
             const imageBase64 = require('fs').readFileSync(imagePath, 'base64');
+            const extension = require('path').extname(imagePath).toLowerCase();
+            const mimeType = extension === '.png' ? 'image/png' : 'image/jpeg';
+            
             messageContent.push({
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${imageBase64}`
+                url: `data:${mimeType};base64,${imageBase64}`
               }
             });
           } catch (imageError) {
@@ -151,22 +150,49 @@ Work your magic! Give me the longest, most powerful Etsy listing possible.`;
         logger.warn('imagePaths is not an array', { imagePaths, type: typeof imagePaths });
       }
 
-      // Use GPT-4o with vision for image analysis
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: `You are the "Killer Listing SEO Creator" in ULTRA LISTING MODE - the most advanced Etsy SEO specialist. You analyze product images with expert precision and create ultra-high-converting, search-optimized listings that dominate Etsy search results. You understand visual product analysis, Etsy's algorithm, buyer psychology, and advanced keyword optimization. Your Ultra Listings consistently outrank all competitors.`
-          },
-          { 
-            role: "user", 
-            content: messageContent
-          }
-        ],
-        max_tokens: 1200,
-        temperature: 0.7
-      });
+      // Use Custom GPT if available, otherwise fallback to GPT-4o
+      let response;
+      if (customGptId && customGptId.startsWith('g-')) {
+        try {
+          response = await this.openai.chat.completions.create({
+            model: customGptId,
+            messages: [
+              { 
+                role: "user", 
+                content: messageContent
+              }
+            ],
+            max_tokens: 1200,
+            temperature: 0.7
+          });
+          logger.info('Used Custom GPT for SEO generation', { customGptId });
+        } catch (customGptError) {
+          logger.warn('Custom GPT failed, falling back to GPT-4o', { error: customGptError.message });
+          response = await this.openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+              { 
+                role: "user", 
+                content: messageContent
+              }
+            ],
+            max_tokens: 1200,
+            temperature: 0.7
+          });
+        }
+      } else {
+        response = await this.openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { 
+              role: "user", 
+              content: messageContent
+            }
+          ],
+          max_tokens: 1200,
+          temperature: 0.7
+        });
+      }
 
       // Parse the natural language response from SEO GPT
       const responseContent = response.choices[0].message.content;
@@ -202,17 +228,17 @@ Work your magic! Give me the longest, most powerful Etsy listing possible.`;
     const tagSection = this.extractSectionContent(content, 'TAGS');
     if (!tagSection) return null;
     
-    // Try to extract tags from various formats
-    // Format: tag1, tag2, tag3
-    let tags = tagSection.split(/[,\n]/).map(tag => 
+    // Extract tags from format: [tag1], [tag2], [tag3] or tag1, tag2, tag3
+    let tags = tagSection.split(',').map(tag => 
       tag.trim()
-         .replace(/["\[\]]/g, '')     // Remove quotes and brackets
+         .replace(/^\[|\]$/g, '')     // Remove square brackets
+         .replace(/^["\']|["\']$/g, '') // Remove quotes
          .replace(/^-\s*/, '')        // Remove leading dashes
-         .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters except spaces
-         .replace(/\s+/g, '')         // Remove all spaces (clean single words)
+         .trim()                      // Clean whitespace
     );
     
-    // Filter out empty tags and limit to 13
+    // PRESERVE SPACES in tags - don't remove them!
+    // Only filter by length and limit to 13
     tags = tags.filter(tag => tag.length > 0 && tag.length <= 20).slice(0, 13);
     
     return tags.length > 0 ? tags : null;

@@ -163,45 +163,47 @@ class GoogleDriveService {
 
   async uploadProcessedFiles(sku, exportPath, originalFolderId) {
     try {
-      // Create a "processed" subfolder in the original folder
-      const processedFolderId = await this.createFolder(`${sku}-processed`, originalFolderId);
+      // Check if "processed" folder already exists, if not create it
+      let processedFolderId;
+      try {
+        const existingFolders = await this.getSubfolders(originalFolderId);
+        const processedFolder = existingFolders.find(f => f.name === 'processed');
+        
+        if (processedFolder) {
+          processedFolderId = processedFolder.id;
+          logger.info('Using existing processed folder', { processedFolderId });
+        } else {
+          processedFolderId = await this.createFolder('processed', originalFolderId);
+          logger.info('Created new processed folder', { processedFolderId });
+        }
+      } catch (error) {
+        processedFolderId = await this.createFolder('processed', originalFolderId);
+      }
       
       const uploadResults = [];
       
-      // Upload CSV file
+      // Upload CSV file (only once, shared for all products)
       const csvPath = path.join(exportPath, 'etsy-products.csv');
       if (await fs.pathExists(csvPath)) {
         const csvFileId = await this.uploadFile(csvPath, 'etsy-products.csv', processedFolderId);
         uploadResults.push({ type: 'csv', fileId: csvFileId });
       }
       
-      // Upload JSON file
-      const jsonPath = path.join(exportPath, `product-${sku}.json`);
-      if (await fs.pathExists(jsonPath)) {
-        const jsonFileId = await this.uploadFile(jsonPath, `product-${sku}.json`, processedFolderId);
-        uploadResults.push({ type: 'json', fileId: jsonFileId });
-      }
-      
-      // Upload listing guide
-      const guidePath = path.join(exportPath, `listing-guide-${sku}.md`);
-      if (await fs.pathExists(guidePath)) {
-        const guideFileId = await this.uploadFile(guidePath, `listing-guide-${sku}.md`, processedFolderId);
-        uploadResults.push({ type: 'guide', fileId: guideFileId });
-      }
-      
-      // Upload processed images
+      // Upload processed images with SKU prefix to avoid conflicts
       const imagesDir = path.join(exportPath, 'images', sku);
       if (await fs.pathExists(imagesDir)) {
         const imageFiles = await fs.readdir(imagesDir);
         
         for (const imageFile of imageFiles) {
           const imagePath = path.join(imagesDir, imageFile);
-          const imageFileId = await this.uploadFile(imagePath, imageFile, processedFolderId);
-          uploadResults.push({ type: 'image', fileId: imageFileId, fileName: imageFile });
+          // Add SKU prefix to filename to avoid conflicts
+          const prefixedFileName = `${sku}-${imageFile}`;
+          const imageFileId = await this.uploadFile(imagePath, prefixedFileName, processedFolderId);
+          uploadResults.push({ type: 'image', fileId: imageFileId, fileName: prefixedFileName });
         }
       }
       
-      logger.info('All processed files uploaded successfully', { 
+      logger.info('Files uploaded to shared processed folder', { 
         sku, 
         processedFolderId, 
         uploadCount: uploadResults.length,
@@ -213,7 +215,7 @@ class GoogleDriveService {
         uploads: uploadResults
       };
     } catch (error) {
-      logger.error('Error uploading processed files', { error: error.message, sku });
+      logger.error('Error uploading to processed folder', { error: error.message, sku });
       throw error;
     }
   }

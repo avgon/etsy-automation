@@ -27,7 +27,10 @@ RUN npm rebuild sharp
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p uploads temp exports logs public
+RUN mkdir -p uploads temp exports logs public test-backgrounds
+
+# Make sure test-backgrounds directory exists and has the right files
+COPY test-backgrounds/ ./test-backgrounds/
 
 # Expose port
 EXPOSE 3000

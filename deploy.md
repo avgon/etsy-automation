@@ -96,12 +96,34 @@ railway up
 
 ### 2. Environment Variables
 Railway dashboard'da şu env var'ları ekle:
+
+**API Keys:**
 - `GOOGLE_CLIENT_ID`
 - `GOOGLE_CLIENT_SECRET`
 - `GOOGLE_REFRESH_TOKEN`
+- `GOOGLE_DRIVE_FOLDER_ID`
 - `OPENAI_API_KEY`
 - `CUSTOM_GPT_ID`
 - `PORT=3000`
+
+**⚠️ CRITICAL - Background Processing (Arkaplanlar için zorunlu):**
+- `ADD_BACKGROUND=true`
+- `BACKGROUND_TYPE=image`
+- `BACKGROUND_IMAGE_PATH=./test-backgrounds`
+- `REMOVE_BACKGROUND=true`
+- `OUTPUT_IMAGE_SIZE=3000`
+
+**Authentication:**
+- `SITE_PASSWORD=your_site_password`
+- `SESSION_SECRET=your_session_secret`
+
+**Etsy API (Otomatik listeleme için):**
+- `ETSY_API_KEY=your_etsy_api_key`
+- `ETSY_SHOP_ID=your_etsy_shop_id`
+- `ETSY_ACCESS_TOKEN=your_etsy_access_token`
+- `USE_ETSY_API=true` (otomatik listeleme için)
+
+NOT: USE_ETSY_API=false ise CSV export + manuel listeleme kullanılır.
 
 ## Option 3: Heroku
 

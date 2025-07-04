@@ -21,7 +21,7 @@ module.exports = {
     outputImageSize: parseInt(process.env.OUTPUT_IMAGE_SIZE) || 3000,
     processingInterval: parseInt(process.env.PROCESSING_INTERVAL) || 60000,
     // Background options
-    addBackground: process.env.ADD_BACKGROUND === 'true' || false,
+    addBackground: process.env.ADD_BACKGROUND !== 'false', // Default: true (enabled)
     backgroundType: process.env.BACKGROUND_TYPE || 'solid', // solid, gradient, image, random
     backgroundColor: process.env.BACKGROUND_COLOR || '#FFFFFF',
     gradientColors: process.env.GRADIENT_COLORS ? process.env.GRADIENT_COLORS.split(',') : ['#FFFFFF', '#F0F0F0'],
