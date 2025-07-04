@@ -14,19 +14,29 @@ class EtsySeleniumService {
 
   async initialize() {
     try {
-      // Chrome options for headless browser
+      // Chrome options for headless browser  
       const options = new chrome.Options();
       
-      if (process.env.NODE_ENV === 'production') {
+      // Railway/Production optimizations
+      if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT) {
         options.addArguments('--headless');
         options.addArguments('--no-sandbox');
         options.addArguments('--disable-dev-shm-usage');
         options.addArguments('--disable-gpu');
-        options.addArguments('--remote-debugging-port=9222');
+        options.addArguments('--disable-extensions');
+        options.addArguments('--disable-web-security');
+        options.addArguments('--disable-features=VizDisplayCompositor');
+        options.addArguments('--memory-pressure-off');
+        options.addArguments('--max_old_space_size=4096');
       }
       
-      options.addArguments('--window-size=1920,1080');
+      options.addArguments('--window-size=1280,720'); // Smaller window for less memory
       options.addArguments('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+      
+      // Set Chrome binary path if available
+      if (process.env.CHROME_BIN) {
+        options.setChromeBinaryPath(process.env.CHROME_BIN);
+      }
 
       this.driver = await new Builder()
         .forBrowser('chrome')
