@@ -3,12 +3,12 @@ const Database = require('./database');
 const PostgresDatabase = require('./postgresDatabase');
 
 function createDatabase() {
-    // Use PostgreSQL in production (Railway) or if DATABASE_URL is set
-    if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production') {
+    // Use PostgreSQL only if DATABASE_URL is explicitly set
+    if (process.env.DATABASE_URL) {
         console.log('🐘 Using PostgreSQL database');
         return new PostgresDatabase();
     } else {
-        console.log('🗄️ Using SQLite database');
+        console.log('🗄️ Using SQLite database (fallback)');
         return new Database();
     }
 }
