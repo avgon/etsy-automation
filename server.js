@@ -5,7 +5,7 @@ const fs = require('fs-extra');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const { body, validationResult } = require('express-validator');
-const Database = require('./src/database/database');
+const createDatabase = require('./src/database');
 const { requireAuth, requireTokens, generateToken, optionalAuth } = require('./src/middleware/auth');
 const { requireSiteAuth } = require('./src/middleware/siteAuth');
 const EtsyAutomation = require('./src/index');
@@ -37,7 +37,7 @@ app.use('/exports', express.static('exports'));
 const upload = multer({ dest: 'uploads/' });
 
 // Initialize database
-const db = new Database();
+const db = createDatabase();
 
 // Initialize services (will be created per user)
 let globalServices = {
@@ -216,23 +216,34 @@ app.get('/api/folders', requireAuth, requireTokens, async (req, res) => {
 
 app.post('/api/process-folder/:folderId', requireAuth, requireTokens, async (req, res) => {
   try {
+    console.log('🔍 Process folder request:', req.params.folderId);
+    console.log('🔍 User ID:', req.userId);
+    console.log('🔍 User tokens exist:', !!req.userTokens);
+    
     const { folderId } = req.params;
     
     // Start processing with user's tokens
     const userServices = createUserServices(req.userTokens);
     const automation = new UserAutomation(req.userTokens);
+    
+    console.log('🔍 Getting folders from Google Drive...');
     const folders = await userServices.googleDrive.pollForNewFolders();
+    console.log('🔍 Found folders:', folders.length);
+    
     const folder = folders.find(f => f.id === folderId);
     
     if (!folder) {
+      console.log('❌ Folder not found:', folderId);
       return res.status(404).json({ success: false, error: 'Folder not found' });
     }
     
+    console.log('✅ Found folder:', folder.name);
+    
     // Process in background with user tokens
     automation.processFolder(folder).then(() => {
-      console.log(`Folder ${folder.name} processed successfully`);
+      console.log(`✅ Folder ${folder.name} processed successfully`);
     }).catch(error => {
-      console.error(`Error processing folder ${folder.name}:`, error);
+      console.error(`❌ Error processing folder ${folder.name}:`, error);
     });
     
     res.json({ 
@@ -242,6 +253,7 @@ app.post('/api/process-folder/:folderId', requireAuth, requireTokens, async (req
       folderName: folder.name
     });
   } catch (error) {
+    console.error('❌ Process folder error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

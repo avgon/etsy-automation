@@ -211,10 +211,149 @@ CATEGORIES: [category1], [category2]`;
         sku: productInfo.sku
       });
       
+      // Generate variations based on product type
+      const variations = await this.generateProductVariations(seoContent, productInfo, imagePaths);
+      seoContent.variations = variations;
+      
       return seoContent;
     } catch (error) {
       logger.error('Error generating Etsy SEO', { error: error.message });
       throw error;
+    }
+  }
+
+  async generateProductVariations(seoContent, productInfo, imagePaths) {
+    try {
+      const productType = productInfo.type.toLowerCase();
+      
+      // Define variations based on product type
+      let variationPrompt = '';
+      
+      if (productType.includes('necklace') || productType.includes('kolye')) {
+        variationPrompt = `Generate Etsy variations for a ${seoContent.title} necklace. Create realistic length and material options with competitive pricing:
+
+NECKLACE VARIATIONS:
+- Chain lengths: 16", 18", 20", 22" (most popular lengths)
+- Materials: Sterling Silver, Gold Plated, Rose Gold Plated
+- Price should increase with length and material quality
+- Base price around $19.99-24.99 for 16" Sterling Silver
+- Add $2-3 for each 2" length increase
+- Add $5-8 for gold plating
+
+Format as JSON array with this structure:
+[
+  {
+    "name": "Chain Length",
+    "options": [
+      {"name": "16 inches", "price": 19.99, "quantity": 5},
+      {"name": "18 inches", "price": 22.99, "quantity": 5},
+      {"name": "20 inches", "price": 25.99, "quantity": 5},
+      {"name": "22 inches", "price": 28.99, "quantity": 5}
+    ]
+  },
+  {
+    "name": "Material",
+    "options": [
+      {"name": "Sterling Silver", "price": 0, "quantity": 10},
+      {"name": "Gold Plated", "price": 6.99, "quantity": 10},
+      {"name": "Rose Gold Plated", "price": 6.99, "quantity": 10}
+    ]
+  }
+]
+
+Provide only the JSON array, no other text.`;
+      
+      } else if (productType.includes('ring') || productType.includes('yüzük')) {
+        variationPrompt = `Generate Etsy variations for a ${seoContent.title} ring. Create realistic size and material options with competitive pricing:
+
+RING VARIATIONS:
+- Ring sizes: US 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 (full US size range)
+- Materials: Sterling Silver, Gold Plated, Rose Gold Plated
+- IMPORTANT: All ring sizes have the SAME price - no price difference by size
+- Base price around $24.99-29.99 for all sizes
+- Only material affects price: Add $7-10 for gold plating
+- Custom size option available at same price
+
+Format as JSON array with this structure:
+[
+  {
+    "name": "Ring Size (US)",
+    "options": [
+      {"name": "US 5", "price": 0, "quantity": 2},
+      {"name": "US 6", "price": 0, "quantity": 3},
+      {"name": "US 7", "price": 0, "quantity": 5},
+      {"name": "US 8", "price": 0, "quantity": 4},
+      {"name": "US 9", "price": 0, "quantity": 3},
+      {"name": "US 10", "price": 0, "quantity": 3},
+      {"name": "US 11", "price": 0, "quantity": 2},
+      {"name": "US 12", "price": 0, "quantity": 2},
+      {"name": "US 13", "price": 0, "quantity": 1},
+      {"name": "US 14", "price": 0, "quantity": 1},
+      {"name": "US 15", "price": 0, "quantity": 1},
+      {"name": "Custom Size", "price": 0, "quantity": 5}
+    ]
+  },
+  {
+    "name": "Material",
+    "options": [
+      {"name": "Sterling Silver", "price": 24.99, "quantity": 20},
+      {"name": "Gold Plated", "price": 32.99, "quantity": 20},
+      {"name": "Rose Gold Plated", "price": 32.99, "quantity": 20}
+    ]
+  }
+]
+
+Provide only the JSON array, no other text.`;
+      
+      } else {
+        // Default variations for other product types
+        variationPrompt = `Generate basic Etsy variations for ${seoContent.title}. Create 1-2 simple variations with competitive pricing:
+
+Format as JSON array with this structure:
+[
+  {
+    "name": "Color",
+    "options": [
+      {"name": "Silver", "price": 0, "quantity": 10},
+      {"name": "Gold", "price": 5.99, "quantity": 10}
+    ]
+  }
+]
+
+Provide only the JSON array, no other text.`;
+      }
+
+      const response = await this.openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "You are a pricing expert for Etsy handmade jewelry. Generate realistic, competitive variations that customers actually want to buy."
+          },
+          {
+            role: "user",
+            content: variationPrompt
+          }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      });
+
+      const variationsJson = response.choices[0].message.content.trim();
+      const variations = JSON.parse(variationsJson);
+      
+      logger.info('Generated product variations', { 
+        productType,
+        sku: productInfo.sku,
+        variationCount: variations.length
+      });
+      
+      return variations;
+      
+    } catch (error) {
+      logger.error('Error generating product variations', { error: error.message });
+      // Return default variations if generation fails
+      return [];
     }
   }
 

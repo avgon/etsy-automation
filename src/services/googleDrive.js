@@ -77,12 +77,29 @@ class GoogleDriveService {
       await fs.ensureDir(path.dirname(filePath));
       
       const writer = fs.createWriteStream(filePath);
-      response.data.pipe(writer);
       
-      return new Promise((resolve, reject) => {
-        writer.on('finish', () => resolve(filePath));
+      // FIXED: Proper promise handling for stream completion
+      await new Promise((resolve, reject) => {
+        response.data.pipe(writer);
+        writer.on('finish', resolve);
         writer.on('error', reject);
+        response.data.on('error', reject);
       });
+      
+      // Verify file exists and has content
+      const stats = await fs.stat(filePath);
+      if (stats.size === 0) {
+        throw new Error('Downloaded file is empty');
+      }
+      
+      logger.info('File downloaded successfully', { 
+        fileId, 
+        fileName, 
+        filePath,
+        size: stats.size 
+      });
+      
+      return filePath;
     } catch (error) {
       logger.error('Error downloading file', { error: error.message, fileId, fileName });
       throw error;

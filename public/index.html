@@ -300,20 +300,28 @@
             log(`🚀 Starting processing for: ${folderName}`);
             document.getElementById('loading').style.display = 'block';
             
+            // Debug: Log request details
+            console.log('🔍 Processing folder:', folderId, folderName);
+            console.log('🔍 Token exists:', !!localStorage.getItem('token'));
+            
             const result = await api(`/process-folder/${folderId}`, {
                 method: 'POST'
             });
             
+            // Debug: Log full response
+            console.log('🔍 Process result:', result);
+            
             document.getElementById('loading').style.display = 'none';
             
-            if (result.success) {
+            if (result && result.success) {
                 log(`✅ Processing started for: ${folderName}`);
                 setTimeout(() => {
                     loadExports();
                     log(`🔄 Auto-refreshing exports...`);
                 }, 5000);
             } else {
-                log(`❌ Error processing folder: ${result.error}`);
+                log(`❌ Error processing folder: ${result?.error || 'Unknown error'}`);
+                console.error('❌ Full error details:', result);
             }
         }
         

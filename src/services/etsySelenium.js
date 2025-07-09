@@ -125,6 +125,11 @@ class EtsySeleniumService {
       // Fill listing details
       await this.fillListingDetails(productData, sku);
 
+      // Add variations if provided
+      if (productData.variations && productData.variations.length > 0) {
+        await this.addVariations(productData.variations, sku);
+      }
+
       // Set shipping and policies  
       await this.setShippingAndPolicies();
 
@@ -227,6 +232,93 @@ class EtsySeleniumService {
 
     } catch (error) {
       logger.error('Error filling listing details', { error: error.message, sku });
+      throw error;
+    }
+  }
+
+  async addVariations(variations, sku) {
+    try {
+      logger.info('Adding variations to listing', { sku, variationCount: variations.length });
+
+      // Click on "Variations" tab
+      const variationsTab = await this.driver.wait(
+        until.elementLocated(By.css('button[data-test-id="variations-tab"]')),
+        10000
+      );
+      await variationsTab.click();
+      await this.driver.sleep(2000);
+
+      // Click "Add variation" button
+      const addVariationButton = await this.driver.findElement(By.css('button[data-test-id="add-variation"]'));
+      await addVariationButton.click();
+      await this.driver.sleep(1000);
+
+      for (const variation of variations) {
+        await this.addSingleVariation(variation, sku);
+      }
+
+      logger.info('Variations added successfully', { sku });
+
+    } catch (error) {
+      logger.error('Error adding variations', { error: error.message, sku });
+      throw error;
+    }
+  }
+
+  async addSingleVariation(variation, sku) {
+    try {
+      // Set variation name (e.g., "Necklace Length", "Ring Size")
+      const variationNameField = await this.driver.findElement(By.css('input[data-test-id="variation-name"]'));
+      await variationNameField.clear();
+      await variationNameField.sendKeys(variation.name);
+
+      // Add variation options
+      for (const option of variation.options) {
+        await this.addVariationOption(option);
+      }
+
+      logger.info('Single variation added', { 
+        sku,
+        variationName: variation.name,
+        optionCount: variation.options.length
+      });
+
+    } catch (error) {
+      logger.error('Error adding single variation', { error: error.message, sku });
+      throw error;
+    }
+  }
+
+  async addVariationOption(option) {
+    try {
+      // Click "Add option" button
+      const addOptionButton = await this.driver.findElement(By.css('button[data-test-id="add-option"]'));
+      await addOptionButton.click();
+      await this.driver.sleep(500);
+
+      // Fill option details
+      const optionNameField = await this.driver.findElement(By.css('input[data-test-id="option-name"]:last-child'));
+      await optionNameField.clear();
+      await optionNameField.sendKeys(option.name);
+
+      // Set price for this option
+      const optionPriceField = await this.driver.findElement(By.css('input[data-test-id="option-price"]:last-child'));
+      await optionPriceField.clear();
+      await optionPriceField.sendKeys(option.price.toString());
+
+      // Set quantity for this option
+      const optionQuantityField = await this.driver.findElement(By.css('input[data-test-id="option-quantity"]:last-child'));
+      await optionQuantityField.clear();
+      await optionQuantityField.sendKeys((option.quantity || 1).toString());
+
+      logger.info('Variation option added', { 
+        optionName: option.name,
+        price: option.price,
+        quantity: option.quantity
+      });
+
+    } catch (error) {
+      logger.error('Error adding variation option', { error: error.message });
       throw error;
     }
   }
