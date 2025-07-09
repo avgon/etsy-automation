@@ -222,8 +222,8 @@ class ImageProcessor {
         const aspectRatio = productMetadata.width / productMetadata.height;
         
         if (productType === 'necklace' || productType === 'kolye') {
-          // Necklace: 2x bigger size (150% area) + upper-center positioning
-          const targetArea = (this.outputSize * this.outputSize) * 1.5; // 150% of normal area
+          // Necklace: Professional Etsy positioning - balanced size with elegant placement
+          const targetArea = (this.outputSize * this.outputSize) * 0.85; // 85% area for professional look
           const targetDimension = Math.sqrt(targetArea);
           
           if (aspectRatio >= 1) {
@@ -239,20 +239,20 @@ class ImageProcessor {
           }
           
           // Cap at maximum canvas size to prevent errors
-          const maxSize = Math.floor(this.outputSize * 0.95);
+          const maxSize = Math.floor(this.outputSize * 0.90);
           if (productSize.width > maxSize || productSize.height > maxSize) {
             const scale = maxSize / Math.max(productSize.width, productSize.height);
             productSize.width = Math.floor(productSize.width * scale);
             productSize.height = Math.floor(productSize.height * scale);
           }
           
-          // Position: center horizontally, upper third vertically
+          // Professional positioning: center horizontally, slightly upper for necklaces
           leftPos = Math.floor((this.outputSize - productSize.width) / 2);
-          topPos = Math.floor(this.outputSize * 0.15); // 15% from top instead of center
+          topPos = Math.floor(this.outputSize * 0.20); // 20% from top for better visual weight
           
         } else {
-          // Ring/Yüzük: Standard 75% area + center positioning  
-          const targetArea = (this.outputSize * this.outputSize) * 0.75; // 75% of total area
+          // Ring/Yüzük: Professional Etsy ring positioning - optimal showcase size
+          const targetArea = (this.outputSize * this.outputSize) * 0.80; // 80% area for prominence
           const targetDimension = Math.sqrt(targetArea);
           
           if (aspectRatio >= 1) {
@@ -267,9 +267,9 @@ class ImageProcessor {
             };
           }
           
-          // Ensure minimum size for visibility but never exceed canvas
-          const minSize = Math.floor(this.outputSize * 0.70);
-          const maxSize = Math.floor(this.outputSize * 0.95);
+          // Professional size constraints for rings
+          const minSize = Math.floor(this.outputSize * 0.65); // Minimum for visibility
+          const maxSize = Math.floor(this.outputSize * 0.88); // Maximum for elegance
           
           if (productSize.width < minSize && productSize.height < minSize) {
             const scale = minSize / Math.max(productSize.width, productSize.height);
@@ -283,9 +283,9 @@ class ImageProcessor {
             productSize.height = Math.floor(productSize.height * scale);
           }
           
-          // Center positioning for rings
+          // Professional ring positioning: slightly above center for better visual impact
           leftPos = Math.floor((this.outputSize - productSize.width) / 2);
-          topPos = Math.floor((this.outputSize - productSize.height) / 2);
+          topPos = Math.floor(this.outputSize * 0.42); // Slightly above center (42% from top)
         }
         
       } else {
@@ -319,11 +319,28 @@ class ImageProcessor {
         .png()
         .toBuffer();
       
-      // Create subtle shadow only for Back backgrounds
+      // Create professional shadow effects for Back backgrounds  
       let compositeOperations;
       if (backgroundName.startsWith('Back')) {
-        // Simple composite without shadow for cleaner look
+        // Professional subtle shadow for Etsy-style product photos
+        const shadowOffset = Math.floor(productSize.width * 0.015); // Subtle offset
+        const shadowBlur = Math.floor(productSize.width * 0.025); // Soft blur
+        
+        const shadow = await sharp(resizedProduct)
+          .modulate({ brightness: 0.25, saturation: 0.1 }) // Dark, desaturated shadow
+          .blur(shadowBlur)
+          .png()
+          .toBuffer();
+        
         compositeOperations = [
+          // Shadow layer
+          {
+            input: shadow,
+            left: leftPos + shadowOffset,
+            top: topPos + shadowOffset,
+            blend: 'multiply' // Natural shadow blending
+          },
+          // Product layer on top
           {
             input: resizedProduct,
             left: leftPos,
