@@ -378,19 +378,100 @@ app.post('/api/upload-backgrounds', upload.array('backgrounds'), async (req, res
     const backgroundsDir = path.join(__dirname, 'test-backgrounds');
     await fs.ensureDir(backgroundsDir);
     
+    const { replace } = req.body;
     const uploadedFiles = [];
+    const replacedFiles = [];
     
     for (const file of req.files) {
       const newPath = path.join(backgroundsDir, file.originalname);
+      
+      // Check if file exists and handle replace logic
+      const fileExists = await fs.pathExists(newPath);
+      if (fileExists && replace === 'true') {
+        await fs.remove(newPath);
+        replacedFiles.push(file.originalname);
+      } else if (fileExists && replace !== 'true') {
+        // Skip file if it exists and replace is not enabled
+        await fs.remove(file.path); // Clean up temp file
+        continue;
+      }
+      
       await fs.move(file.path, newPath);
       uploadedFiles.push(file.originalname);
     }
     
     res.json({ 
       success: true, 
-      message: `${uploadedFiles.length} background files uploaded`,
-      files: uploadedFiles
+      message: `${uploadedFiles.length} background files uploaded${replacedFiles.length > 0 ? `, ${replacedFiles.length} files replaced` : ''}`,
+      files: uploadedFiles,
+      replaced: replacedFiles
     });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Delete specific background files
+app.delete('/api/backgrounds', async (req, res) => {
+  try {
+    const { files } = req.body;
+    
+    if (!files || !Array.isArray(files)) {
+      return res.status(400).json({ success: false, error: 'Files array is required' });
+    }
+    
+    const backgroundsDir = path.join(__dirname, 'test-backgrounds');
+    const deletedFiles = [];
+    const notFoundFiles = [];
+    
+    for (const filename of files) {
+      const filePath = path.join(backgroundsDir, filename);
+      
+      if (await fs.pathExists(filePath)) {
+        await fs.remove(filePath);
+        deletedFiles.push(filename);
+      } else {
+        notFoundFiles.push(filename);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `${deletedFiles.length} background files deleted`,
+      deleted: deletedFiles,
+      notFound: notFoundFiles
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Reset all backgrounds (delete all files)
+app.delete('/api/backgrounds/reset', async (req, res) => {
+  try {
+    const backgroundsDir = path.join(__dirname, 'test-backgrounds');
+    
+    if (await fs.pathExists(backgroundsDir)) {
+      const files = await fs.readdir(backgroundsDir);
+      const imageFiles = files.filter(f => ['.jpg', '.jpeg', '.png'].includes(path.extname(f).toLowerCase()));
+      
+      // Delete all image files
+      for (const file of imageFiles) {
+        await fs.remove(path.join(backgroundsDir, file));
+      }
+      
+      res.json({ 
+        success: true, 
+        message: `All ${imageFiles.length} background files have been deleted`,
+        deletedCount: imageFiles.length
+      });
+    } else {
+      res.json({ 
+        success: true, 
+        message: 'No backgrounds directory found',
+        deletedCount: 0
+      });
+    }
   } catch (error) {
     res.status(500).json({ success: false, error: error.message });
   }
