@@ -199,28 +199,28 @@ class GoogleDriveService {
       
       const uploadResults = [];
       
-      // Upload CSV file (only once, shared for all products)
+      // Upload CSV file for this specific product
       const csvPath = path.join(exportPath, 'etsy-products.csv');
       if (await fs.pathExists(csvPath)) {
-        const csvFileId = await this.uploadFile(csvPath, 'etsy-products.csv', processedFolderId);
+        const csvFileId = await this.uploadFile(csvPath, `${sku}-products.csv`, processedFolderId);
         uploadResults.push({ type: 'csv', fileId: csvFileId });
       }
       
-      // Upload processed images with SKU prefix to avoid conflicts
+      // Upload processed images (no SKU prefix needed since each product has its own folder)
       const imagesDir = path.join(exportPath, 'images', sku);
       if (await fs.pathExists(imagesDir)) {
         const imageFiles = await fs.readdir(imagesDir);
         
         for (const imageFile of imageFiles) {
           const imagePath = path.join(imagesDir, imageFile);
-          // Add SKU prefix to filename to avoid conflicts
-          const prefixedFileName = `${sku}-${imageFile}`;
-          const imageFileId = await this.uploadFile(imagePath, prefixedFileName, processedFolderId);
-          uploadResults.push({ type: 'image', fileId: imageFileId, fileName: prefixedFileName });
+          // No SKU prefix needed - each product has its own processed folder
+          const cleanFileName = imageFile.replace(`processed_`, '');
+          const imageFileId = await this.uploadFile(imagePath, cleanFileName, processedFolderId);
+          uploadResults.push({ type: 'image', fileId: imageFileId, fileName: cleanFileName });
         }
       }
       
-      logger.info('Files uploaded to shared processed folder', { 
+      logger.info('Files uploaded to product-specific processed folder', { 
         sku, 
         processedFolderId, 
         uploadCount: uploadResults.length,

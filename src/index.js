@@ -162,10 +162,11 @@ class EtsyAutomation {
       // Upload processed files to Google Drive
       if (processedImages.length > 0) {
         try {
+          // Upload to the product's own folder (folder.id), not parent folder
           const uploadResult = await this.googleDrive.uploadProcessedFiles(
             sku, 
             path.join(__dirname, '../exports'),
-            folder.id
+            folder.id  // This is the individual product folder (N106-STARVIREO)
           );
           
           logger.info('Processed files uploaded to Google Drive', { 
