@@ -178,23 +178,30 @@ class GoogleDriveService {
     }
   }
 
-  async uploadProcessedFiles(sku, exportPath, originalFolderId) {
+  async uploadProcessedFiles(sku, exportPath, productFolderId) {
     try {
-      // Check if "processed" folder already exists, if not create it
+      console.log('🔍 Upload to product folder:', productFolderId, 'SKU:', sku);
+      
+      // Check if "processed" folder already exists in THIS PRODUCT folder, if not create it
       let processedFolderId;
       try {
-        const existingFolders = await this.getSubfolders(originalFolderId);
+        const existingFolders = await this.getSubfolders(productFolderId);
+        console.log('🔍 Existing subfolders in product:', existingFolders.length);
+        
         const processedFolder = existingFolders.find(f => f.name === 'processed');
         
         if (processedFolder) {
           processedFolderId = processedFolder.id;
-          logger.info('Using existing processed folder', { processedFolderId });
+          console.log('✅ Using existing processed folder in product:', processedFolderId);
+          logger.info('Using existing processed folder in product', { processedFolderId, productFolderId });
         } else {
-          processedFolderId = await this.createFolder('processed', originalFolderId);
-          logger.info('Created new processed folder', { processedFolderId });
+          processedFolderId = await this.createFolder('processed', productFolderId);
+          console.log('✅ Created new processed folder in product:', processedFolderId);
+          logger.info('Created new processed folder in product', { processedFolderId, productFolderId });
         }
       } catch (error) {
-        processedFolderId = await this.createFolder('processed', originalFolderId);
+        console.log('❌ Error finding subfolders, creating new processed folder');
+        processedFolderId = await this.createFolder('processed', productFolderId);
       }
       
       const uploadResults = [];

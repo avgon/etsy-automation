@@ -222,8 +222,8 @@ class ImageProcessor {
         const aspectRatio = productMetadata.width / productMetadata.height;
         
         if (productType === 'necklace' || productType === 'kolye') {
-          // Necklace: Professional Etsy positioning - balanced size with elegant placement
-          const targetArea = (this.outputSize * this.outputSize) * 0.85; // 85% area for professional look
+          // Necklace: Etsy reference style - medium size, centered placement
+          const targetArea = (this.outputSize * this.outputSize) * 0.65; // 65% area - not too big
           const targetDimension = Math.sqrt(targetArea);
           
           if (aspectRatio >= 1) {
@@ -239,20 +239,20 @@ class ImageProcessor {
           }
           
           // Cap at maximum canvas size to prevent errors
-          const maxSize = Math.floor(this.outputSize * 0.90);
+          const maxSize = Math.floor(this.outputSize * 0.85);
           if (productSize.width > maxSize || productSize.height > maxSize) {
             const scale = maxSize / Math.max(productSize.width, productSize.height);
             productSize.width = Math.floor(productSize.width * scale);
             productSize.height = Math.floor(productSize.height * scale);
           }
           
-          // Professional positioning: center horizontally, slightly upper for necklaces
+          // Etsy style positioning: center both horizontally and vertically
           leftPos = Math.floor((this.outputSize - productSize.width) / 2);
-          topPos = Math.floor(this.outputSize * 0.20); // 20% from top for better visual weight
+          topPos = Math.floor((this.outputSize - productSize.height) / 2); // Perfect center
           
         } else {
-          // Ring/Yüzük: Professional Etsy ring positioning - optimal showcase size
-          const targetArea = (this.outputSize * this.outputSize) * 0.80; // 80% area for prominence
+          // Ring/Yüzük: Etsy reference style - balanced size, centered placement
+          const targetArea = (this.outputSize * this.outputSize) * 0.70; // 70% area - balanced
           const targetDimension = Math.sqrt(targetArea);
           
           if (aspectRatio >= 1) {
@@ -268,8 +268,8 @@ class ImageProcessor {
           }
           
           // Professional size constraints for rings
-          const minSize = Math.floor(this.outputSize * 0.65); // Minimum for visibility
-          const maxSize = Math.floor(this.outputSize * 0.88); // Maximum for elegance
+          const minSize = Math.floor(this.outputSize * 0.60); // Minimum for visibility
+          const maxSize = Math.floor(this.outputSize * 0.85); // Maximum for elegance
           
           if (productSize.width < minSize && productSize.height < minSize) {
             const scale = minSize / Math.max(productSize.width, productSize.height);
@@ -283,9 +283,9 @@ class ImageProcessor {
             productSize.height = Math.floor(productSize.height * scale);
           }
           
-          // Professional ring positioning: slightly above center for better visual impact
+          // Etsy style ring positioning: perfect center
           leftPos = Math.floor((this.outputSize - productSize.width) / 2);
-          topPos = Math.floor(this.outputSize * 0.42); // Slightly above center (42% from top)
+          topPos = Math.floor((this.outputSize - productSize.height) / 2); // Perfect center
         }
         
       } else {
