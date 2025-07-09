@@ -222,8 +222,8 @@ class ImageProcessor {
         const aspectRatio = productMetadata.width / productMetadata.height;
         
         if (productType === 'necklace' || productType === 'kolye') {
-          // Necklace: BIG size, TOP position
-          const targetArea = (this.outputSize * this.outputSize) * 0.85; // 85% area - BIG
+          // Necklace: BIGGER size, TOP position
+          const targetArea = (this.outputSize * this.outputSize) * 1.02; // 102% area - %20 DAHA BÜYÜK (85% * 1.2)
           const targetDimension = Math.sqrt(targetArea);
           
           if (aspectRatio >= 1) {
@@ -238,8 +238,8 @@ class ImageProcessor {
             };
           }
           
-          // Cap at maximum canvas size to prevent errors
-          const maxSize = Math.floor(this.outputSize * 0.95);
+          // Cap at maximum canvas size to prevent errors (bigger limit for necklaces)
+          const maxSize = Math.floor(this.outputSize * 1.05); // Bigger limit for %20 larger necklaces
           if (productSize.width > maxSize || productSize.height > maxSize) {
             const scale = maxSize / Math.max(productSize.width, productSize.height);
             productSize.width = Math.floor(productSize.width * scale);
