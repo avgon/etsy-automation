@@ -385,6 +385,7 @@
                         ${exports.images.map(folder => `
                             <div class="export-item">
                                 <span>📁 ${folder}</span>
+                                <button class="btn" onclick="openImageFolder('${folder}')">📂 Open Folder</button>
                             </div>
                         `).join('')}
                     </div>
@@ -395,6 +396,11 @@
         function downloadFile(filename) {
             window.open(`/api/export/${filename}`, '_blank');
             log(`📥 Downloading: ${filename}`);
+        }
+        
+        function openImageFolder(folderName) {
+            window.open(`/api/export/images/${folderName}`, '_blank');
+            log(`📂 Opening image folder: ${folderName}`);
         }
         
         async function refreshAll() {

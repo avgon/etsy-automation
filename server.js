@@ -298,6 +298,81 @@ app.get('/api/export/:filename', async (req, res) => {
   }
 });
 
+// New endpoint for opening image folders
+app.get('/api/export/images/:folderName', async (req, res) => {
+  try {
+    const { folderName } = req.params;
+    const folderPath = path.join(__dirname, 'exports', 'images', folderName);
+    
+    if (await fs.pathExists(folderPath)) {
+      const files = await fs.readdir(folderPath);
+      const imageFiles = files.filter(file => 
+        file.toLowerCase().match(/\.(png|jpg|jpeg|gif|webp)$/i)
+      );
+      
+      // Generate HTML page to display images
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Image Folder: ${folderName}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+            .container { max-width: 1200px; margin: 0 auto; }
+            .header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+            .image-item { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+            .image-item img { width: 100%; height: 250px; object-fit: cover; border-radius: 4px; }
+            .filename { margin-top: 10px; font-size: 14px; color: #666; word-break: break-all; }
+            .download-btn { display: inline-block; margin-top: 10px; padding: 8px 16px; background: #4CAF50; color: white; text-decoration: none; border-radius: 4px; font-size: 14px; }
+            .download-btn:hover { background: #45a049; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📁 Image Folder: ${folderName}</h1>
+              <p>📸 Found ${imageFiles.length} images</p>
+            </div>
+            <div class="grid">
+              ${imageFiles.map(file => `
+                <div class="image-item">
+                  <img src="/api/export/images/${folderName}/${file}" alt="${file}">
+                  <div class="filename">${file}</div>
+                  <a href="/api/export/images/${folderName}/${file}" download class="download-btn">📥 Download</a>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+      
+      res.send(html);
+    } else {
+      res.status(404).json({ success: false, error: 'Folder not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Individual image file serving
+app.get('/api/export/images/:folderName/:filename', async (req, res) => {
+  try {
+    const { folderName, filename } = req.params;
+    const filePath = path.join(__dirname, 'exports', 'images', folderName, filename);
+    
+    if (await fs.pathExists(filePath)) {
+      res.sendFile(filePath);
+    } else {
+      res.status(404).json({ success: false, error: 'Image not found' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.post('/api/upload-backgrounds', upload.array('backgrounds'), async (req, res) => {
   try {
     const backgroundsDir = path.join(__dirname, 'test-backgrounds');
