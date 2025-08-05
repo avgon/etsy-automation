@@ -51,7 +51,8 @@ module.exports = {
   },
   oneClickLister: {
     // OneClickLister API Configuration
-    apiKey: process.env.ONECLICKLISTER_API_KEY,
+    clientId: process.env.ONECLICKLISTER_API_KEY,
+    clientSecret: process.env.ONECLICKLISTER_API_SECRET,
     apiUrl: process.env.ONECLICKLISTER_API_URL || 'https://api.oneclicklister.com',
     userCode: process.env.ONECLICKLISTER_USER_CODE,
     storeId: process.env.ONECLICKLISTER_STORE_ID,

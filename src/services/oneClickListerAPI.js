@@ -5,15 +5,18 @@ const logger = require('../utils/logger');
 class OneClickListerAPI {
   constructor(options = {}) {
     // OneClickLister API configuration
-    this.baseURL = options.baseURL || process.env.ONECLICKLISTER_API_URL || 'https://api.oneclicklister.com';
-    this.apiKey = options.apiKey || process.env.ONECLICKLISTER_API_KEY;
+    this.baseURL = options.baseURL || process.env.ONECLICKLISTER_API_URL || 'https://oneclicklister.com';
+    this.clientId = options.clientId || process.env.ONECLICKLISTER_API_KEY;
+    this.clientSecret = options.clientSecret || process.env.ONECLICKLISTER_API_SECRET;
     this.userCode = options.userCode || process.env.ONECLICKLISTER_USER_CODE;
     this.storeId = options.storeId || process.env.ONECLICKLISTER_STORE_ID;
+    
+    // Access token for authenticated requests (will be obtained via OAuth)
+    this.accessToken = null;
     
     // Default headers for OneClickLister API
     this.defaultHeaders = {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.apiKey}`,
       'User-Agent': 'EtsyAutomation/1.0'
     };
   }
@@ -25,7 +28,8 @@ class OneClickListerAPI {
   validateConfig() {
     const errors = [];
     
-    if (!this.apiKey) errors.push('Missing ONECLICKLISTER_API_KEY');
+    if (!this.clientId) errors.push('Missing ONECLICKLISTER_API_KEY (Client ID)');
+    if (!this.clientSecret) errors.push('Missing ONECLICKLISTER_API_SECRET (Client Secret)');
     if (!this.userCode) errors.push('Missing ONECLICKLISTER_USER_CODE');
     if (!this.storeId) errors.push('Missing ONECLICKLISTER_STORE_ID');
     
@@ -33,6 +37,72 @@ class OneClickListerAPI {
       valid: errors.length === 0,
       errors
     };
+  }
+
+  /**
+   * Authenticate with OneClickLister API using Client Credentials
+   * @returns {Object} - Authentication result with access token
+   */
+  async authenticate() {
+    try {
+      logger.info('Authenticating with OneClickLister API', { 
+        clientId: this.clientId?.substring(0, 8) + '...',
+        baseURL: this.baseURL
+      });
+
+      // OneClickLister uses Etsy OAuth, not direct client credentials
+      // For now, we'll need to implement Etsy OAuth flow through OneClickLister
+      const response = await axios.post(`${this.baseURL}/api/auth/etsy`, {
+        client_id: this.clientId,
+        client_secret: this.clientSecret,
+        user_code: this.userCode
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'EtsyAutomation/1.0'
+        }
+      });
+
+      this.accessToken = response.data.access_token;
+      
+      // Update default headers with access token
+      this.defaultHeaders.Authorization = `Bearer ${this.accessToken}`;
+
+      logger.info('OneClickLister authentication successful', {
+        tokenType: response.data.token_type,
+        expiresIn: response.data.expires_in
+      });
+
+      return {
+        success: true,
+        accessToken: this.accessToken,
+        tokenType: response.data.token_type,
+        expiresIn: response.data.expires_in
+      };
+    } catch (error) {
+      logger.error('OneClickLister authentication failed', {
+        error: error.response?.data || error.message,
+        status: error.response?.status,
+        clientId: this.clientId?.substring(0, 8) + '...'
+      });
+
+      return {
+        success: false,
+        error: error.response?.data || error.message
+      };
+    }
+  }
+
+  /**
+   * Ensure we have a valid access token
+   */
+  async ensureAuthenticated() {
+    if (!this.accessToken) {
+      const authResult = await this.authenticate();
+      if (!authResult.success) {
+        throw new Error(`Authentication failed: ${authResult.error}`);
+      }
+    }
   }
 
   /**
@@ -44,6 +114,9 @@ class OneClickListerAPI {
    */
   async makeRequest(method, endpoint, data = null) {
     try {
+      // Ensure we have a valid access token
+      await this.ensureAuthenticated();
+
       const config = {
         method,
         url: `${this.baseURL}${endpoint}`,
@@ -58,7 +131,8 @@ class OneClickListerAPI {
       logger.info('OneClickLister API request', { 
         method, 
         endpoint, 
-        hasData: !!data 
+        hasData: !!data,
+        hasAuth: !!this.accessToken
       });
 
       const response = await axios(config);
@@ -102,38 +176,43 @@ class OneClickListerAPI {
 
   /**
    * Fetch store information
-   * @param {string} storeId - Store ID (optional, uses default if not provided)
    * @returns {Object} - Store information
    */
-  async fetchStore(storeId = null) {
+  async fetchStores() {
     try {
-      const targetStoreId = storeId || this.storeId;
-      const response = await this.makeRequest('GET', `/stores/${targetStoreId}`);
+      const response = await this.makeRequest('GET', '/api/stores');
       return response;
     } catch (error) {
-      logger.error('Error fetching store', { storeId: storeId || this.storeId });
+      logger.error('Error fetching stores');
       throw error;
     }
   }
 
   /**
-   * Fetch store listings
-   * @param {Object} options - Query options
-   * @returns {Array} - List of listings
+   * Fetch specific listing
+   * @param {string} listingId - Listing ID
+   * @returns {Object} - Listing information
    */
-  async fetchListings(options = {}) {
+  async fetchListing(listingId) {
     try {
-      const params = new URLSearchParams({
-        storeId: options.storeId || this.storeId,
-        limit: options.limit || 50,
-        offset: options.offset || 0,
-        status: options.status || 'active'
-      });
-
-      const response = await this.makeRequest('GET', `/listings?${params}`);
+      const response = await this.makeRequest('GET', `/api/listing/${listingId}`);
       return response;
     } catch (error) {
-      logger.error('Error fetching listings', { options });
+      logger.error('Error fetching listing', { listingId });
+      throw error;
+    }
+  }
+
+  /**
+   * Get listing locations
+   * @returns {Array} - List of listing locations
+   */
+  async getListingLocations() {
+    try {
+      const response = await this.makeRequest('GET', '/api/listing/locations');
+      return response;
+    } catch (error) {
+      logger.error('Error fetching listing locations');
       throw error;
     }
   }
@@ -163,7 +242,7 @@ class OneClickListerAPI {
         storeId: payload.storeId
       });
 
-      const response = await this.makeRequest('POST', '/products/create', payload);
+      const response = await this.makeRequest('POST', '/api/product/create', payload);
       
       logger.info('Product created successfully', { 
         productId: response.productId || response.id,
@@ -204,7 +283,7 @@ class OneClickListerAPI {
         storeId: this.storeId
       });
 
-      const response = await this.makeRequest('POST', '/products/create-bulk', {
+      const response = await this.makeRequest('POST', '/api/product/create-bulk', {
         products: processedPayloads
       });
 
@@ -243,7 +322,7 @@ class OneClickListerAPI {
         title: payload.product?.title
       });
 
-      const response = await this.makeRequest('PUT', `/products/${productId}`, payload);
+      const response = await this.makeRequest('PUT', `/api/product/update/${productId}`, payload);
       
       logger.info('Product updated successfully', { productId });
 
@@ -281,7 +360,7 @@ class OneClickListerAPI {
         count: processedUpdates.length 
       });
 
-      const response = await this.makeRequest('PUT', '/products/update-bulk', {
+      const response = await this.makeRequest('PUT', '/api/product/update-bulk', {
         updates: processedUpdates
       });
 
@@ -318,7 +397,7 @@ class OneClickListerAPI {
         syncType: payload.syncType
       });
 
-      const response = await this.makeRequest('POST', '/stores/sync', payload);
+      const response = await this.makeRequest('POST', '/api/store/sync', payload);
       
       logger.info('Store sync completed', { 
         storeId: payload.storeId,
@@ -341,7 +420,7 @@ class OneClickListerAPI {
    */
   async getEtsyCategories() {
     try {
-      const response = await this.makeRequest('GET', '/etsy/categories');
+      const response = await this.makeRequest('GET', '/api/categories/etsy');
       return response;
     } catch (error) {
       logger.error('Error fetching Etsy categories', { error: error.message });
@@ -356,7 +435,7 @@ class OneClickListerAPI {
    */
   async getEtsyCategoryDetail(categoryId) {
     try {
-      const response = await this.makeRequest('GET', `/etsy/categories/${categoryId}`);
+      const response = await this.makeRequest('GET', `/api/categories/etsy/${categoryId}`);
       return response;
     } catch (error) {
       logger.error('Error fetching Etsy category detail', { 
@@ -375,7 +454,7 @@ class OneClickListerAPI {
   async getShippingProfiles(storeId = null) {
     try {
       const targetStoreId = storeId || this.storeId;
-      const response = await this.makeRequest('GET', `/stores/${targetStoreId}/shipping-profiles`);
+      const response = await this.makeRequest('GET', '/api/shipping-profiles');
       return response;
     } catch (error) {
       logger.error('Error fetching shipping profiles', { 
@@ -393,7 +472,7 @@ class OneClickListerAPI {
    */
   async getJobStatus(jobId) {
     try {
-      const response = await this.makeRequest('GET', `/jobs/${jobId}`);
+      const response = await this.makeRequest('GET', `/api/jobs/${jobId}`);
       return response;
     } catch (error) {
       logger.error('Error fetching job status', { 
@@ -418,7 +497,7 @@ class OneClickListerAPI {
         offset: options.offset || 0
       });
 
-      const response = await this.makeRequest('GET', `/jobs?${params}`);
+      const response = await this.makeRequest('GET', `/api/jobs?${params}`);
       return response;
     } catch (error) {
       logger.error('Error listing jobs', { error: error.message });
@@ -444,7 +523,7 @@ class OneClickListerAPI {
         storeId: payload.storeId
       });
 
-      const response = await this.makeRequest('POST', '/schedules', payload);
+      const response = await this.makeRequest('POST', '/api/schedules/create', payload);
       
       logger.info('Schedule created successfully', { 
         scheduleId: response.scheduleId || response.id,
