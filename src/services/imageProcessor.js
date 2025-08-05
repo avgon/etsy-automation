@@ -345,8 +345,8 @@ class ImageProcessor {
         }
         
       } else {
-        // Original sizing for other backgrounds
-        const targetArea = (this.outputSize * this.outputSize) * 0.45;
+        // ALL backgrounds now use reference point positioning
+        const targetArea = (this.outputSize * this.outputSize) * 0.65; // Slightly larger for other backgrounds
         const aspectRatio = productMetadata.width / productMetadata.height;
         
         if (aspectRatio >= 1) {
@@ -361,9 +361,17 @@ class ImageProcessor {
           };
         }
         
-        // Center position for other backgrounds
-        leftPos = Math.floor((this.outputSize - productSize.width) / 2);
-        topPos = Math.floor((this.outputSize - productSize.height) / 2);
+        // Use reference point positioning for ALL backgrounds (not just Back*)
+        const referencePosition = this.getReferencePointPosition(productType, productSize, this.outputSize);
+        leftPos = referencePosition.left;
+        topPos = referencePosition.top;
+        
+        logger.info('Applied reference point positioning to all backgrounds', {
+          productType,
+          backgroundType: 'other',
+          referencePosition,
+          productSize
+        });
       }
       
       // Resize product with background removal
