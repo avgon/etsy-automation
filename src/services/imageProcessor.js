@@ -35,6 +35,60 @@ class ImageProcessor {
     return 'ring';
   }
 
+  /**
+   * Get consistent reference point positioning for product placement
+   * Based on the blue X reference point shown in screenshot
+   * @param {string} productType - Type of product (necklace, ring, etc.)
+   * @param {Object} productSize - Product dimensions {width, height}
+   * @param {number} canvasSize - Canvas size (3000x3000)
+   * @returns {Object} - Position coordinates {left, top}
+   */
+  getReferencePointPosition(productType, productSize, canvasSize = 3000) {
+    // Reference point coordinates based on screenshot analysis
+    // Blue X appears to be approximately at these relative positions
+    const referencePoint = {
+      x: canvasSize * 0.35, // 35% from left (approximately where blue X is)
+      y: canvasSize * 0.30  // 30% from top (approximately where blue X is)
+    };
+
+    let position = { left: 0, top: 0 };
+
+    switch (productType) {
+      case 'necklace':
+      case 'kolye':
+        // For necklaces, center the pendant/main element at reference point
+        position.left = Math.floor(referencePoint.x - (productSize.width / 2));
+        position.top = Math.floor(referencePoint.y - (productSize.height * 0.4)); // Pendant slightly above center
+        break;
+
+      case 'ring':
+      case 'yüzük':
+        // For rings, center the main stone/detail at reference point  
+        position.left = Math.floor(referencePoint.x - (productSize.width / 2));
+        position.top = Math.floor(referencePoint.y - (productSize.height / 2));
+        break;
+
+      default:
+        // Default positioning - center at reference point
+        position.left = Math.floor(referencePoint.x - (productSize.width / 2));
+        position.top = Math.floor(referencePoint.y - (productSize.height / 2));
+        break;
+    }
+
+    // Ensure product stays within canvas bounds
+    position.left = Math.max(0, Math.min(position.left, canvasSize - productSize.width));
+    position.top = Math.max(0, Math.min(position.top, canvasSize - productSize.height));
+
+    logger.info('Reference point positioning', {
+      productType,
+      productSize,
+      referencePoint,
+      finalPosition: position
+    });
+
+    return position;
+  }
+
   async downloadImage(url, filePath) {
     try {
       const response = await axios({
@@ -246,12 +300,13 @@ class ImageProcessor {
             productSize.height = Math.floor(productSize.height * scale);
           }
           
-          // BIG product, TOP position: center horizontal, TOP vertical
-          leftPos = Math.floor((this.outputSize - productSize.width) / 2);
-          topPos = 0; // EN ÜST NOKTASI Y=0
+          // Use reference point positioning instead of top positioning
+          const referencePosition = this.getReferencePointPosition(productType, productSize, this.outputSize);
+          leftPos = referencePosition.left;
+          topPos = referencePosition.top;
           
         } else {
-          // Ring/Yüzük: BIG size, TOP position
+          // Ring/Yüzük: BIG size, REFERENCE POINT position
           const targetArea = (this.outputSize * this.outputSize) * 0.85; // 85% area - BIG
           const targetDimension = Math.sqrt(targetArea);
           
@@ -283,9 +338,10 @@ class ImageProcessor {
             productSize.height = Math.floor(productSize.height * scale);
           }
           
-          // BIG product, TOP position: center horizontal, TOP vertical
-          leftPos = Math.floor((this.outputSize - productSize.width) / 2);
-          topPos = 0; // EN ÜST NOKTASI Y=0
+          // Use reference point positioning for consistent placement
+          const referencePosition = this.getReferencePointPosition(productType, productSize, this.outputSize);
+          leftPos = referencePosition.left;
+          topPos = referencePosition.top;
         }
         
       } else {

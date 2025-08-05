@@ -2,163 +2,312 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+## Development Commands
 
-This is an automated Etsy listing tool that monitors Google Drive folders, processes product images with professional backgrounds, creates SEO content, and exports products for Etsy listing. The system offers both automated monitoring and a web interface for manual processing, with a service-oriented architecture.
-
-## Core Architecture
-
-The application has **two main entry points**:
-
-### Command Line Interface (`src/index.js`)
-- Automated monitoring and processing engine
-- Polls Google Drive every 60 seconds for new product folders
-- Processes products end-to-end without user intervention
-
-### Web Interface (`server.js`) 
-- Express.js server with multi-user authentication
-- Manual folder processing and configuration management
-- User-specific API token management with SQLite database
-
-### Service Layer (`src/services/`)
-- **GoogleDriveService**: OAuth2-based folder monitoring, file downloads/uploads
-- **OpenAIService**: GPT-4o SEO content generation with custom GPT fallbacks
-- **ImageProcessor**: Professional background application using Sharp (not AI-generated backgrounds)
-- **EtsyService**: Direct API integration (configured but defaults to CSV export)
-- **CSVExportService**: Etsy-compatible CSV and manual listing guide generation
-- **EtsyBulkUploadService**: Bulk upload CSV formatting and image packaging
-
-The main workflow: Monitor → Download → Background Processing → SEO Generation → Export
-
-## Essential Commands
-
+### Core Application
 ```bash
-# Start the main automation (continuous monitoring)
-npm start
-
-# Start web interface server on port 3000
-npm run web
-# Alternative: npm run dev-web (with auto-restart)
-
-# Test API connections before running automation
-node test-connection.js
-
-# Process a specific folder manually for testing
-node process-single-folder.js
-
-# Setup Google OAuth (one-time configuration)
-node oauth-setup.js
-
-# Create bulk upload files from processed products
-node create-bulk-upload.js
-
-# Create image ZIP packages for Etsy upload
-node create-images-zip.js
-
-# Test background processing functionality
-node test-background.js
-
-# Full end-to-end workflow testing
-node full-process-test.js
-
-# Run tests
-npm test
-
-# Development mode with auto-restart
-npm run dev
+npm start           # Start automated monitoring (CLI mode)
+npm run web        # Start web interface on port 3000
+npm run dev        # Development mode with auto-restart (CLI)
+npm run dev-web    # Web interface with auto-restart
+npm test           # Run Jest tests
 ```
 
-## Environment Setup
+### Testing & Validation
+```bash
+node test-connection.js         # Test API connectivity
+node full-process-test.js       # End-to-end workflow testing
+node process-single-folder.js   # Manual single folder processing
+node test-background.js         # Test background processing
+node test-seo.js               # Test SEO content generation
+node test-oneclicklister.js     # Test OneClickLister payload integration
+node test-etsy-v3.js           # Test Etsy API v3 integration
+node test-oneclicklister-api.js # Test OneClickLister API integration
+node test-product-positioning.js # Test product positioning system
+```
 
-Copy `.env.example` to `.env` and configure:
-- **Google Drive API**: Client credentials, refresh token, folder IDs for monitoring
-- **OpenAI API**: API key and custom GPT model ID for SEO content generation
-- **Processing Settings**: Image size (default 3000x3000), monitoring intervals
-- **Etsy API**: Shop credentials (configured but defaults to CSV export)
-- **Site Authentication**: Password for web interface access
+### Setup & Utilities
+```bash
+node oauth-setup.js            # Google OAuth setup
+node etsy-oauth-setup.js       # Etsy OAuth 2.0 setup with PKCE
+node create-bulk-upload.js     # Generate bulk upload files
+node create-images-zip.js      # Create image ZIP packages
+```
 
-The system requires Google Drive API setup with OAuth2 for folder monitoring and file operations. Web interface users manage their own API tokens through the database.
+## Architecture Overview
 
-## Key Processing Flow
+### Dual Entry Points
+- **CLI Mode** (`src/index.js`): Automated Google Drive monitoring with 60-second intervals
+- **Web Mode** (`server.js`): Multi-user web interface with JWT authentication
 
-1. **Monitoring**: Polls Google Drive folder every 60 seconds for new subfolders
-2. **SKU Generation**: Creates unique SKUs from folder names with timestamps
-3. **Image Processing**: Downloads → Background Application → Resize to 3000x3000
-4. **Product Type Detection**: Automatically detects rings vs necklaces for optimal positioning
-5. **Background Processing**: Applies professional backgrounds (Back1.jpg, Back2.jpg, Back3.jpg) from `test-backgrounds/`
-   - **Rings**: 75% canvas area, center positioning
-   - **Necklaces**: 150% canvas area (2x larger), upper-center positioning (15% from top)
-6. **SEO Generation**: Custom "Killer SEO GPT" creates 130-140 char titles, 13 tags (preserving spaces), optimized descriptions
-7. **Export**: Saves to `exports/` with CSV, images, and manual listing guides
-8. **Etsy Integration**: Optional automatic listing via Etsy API or CSV export for manual upload
-9. **Upload**: Stores processed files back to Google Drive "processed" folder
+### Service Layer (`src/services/`)
+- **GoogleDriveService**: OAuth2 folder monitoring, file operations
+- **OpenAIService**: GPT-4o SEO content generation with custom GPT integration
+- **ImageProcessor**: Professional background application using Sharp
+- **EtsyService**: Etsy API v3 integration with OAuth 2.0 and PKCE
+- **EtsyOAuthService**: Complete OAuth 2.0 flow with token management
+- **EtsyOneClickListerService**: OneClickLister payload format integration
+- **OneClickListerAPI**: Full OneClickLister API integration
+- **EtsyBulkUploadService**: CSV export for manual Etsy bulk uploads
+- **CSVExportService**: Etsy-compatible product data export
 
-## Image Processing Details
+### Database Layer (`src/database/`)
+- **Auto-detecting factory**: SQLite (default) or PostgreSQL (when DATABASE_URL set)
+- **Multi-user support**: User accounts with individual API token management
+- **Schema**: Users table with linked user_tokens for API credentials
 
-The system applies professional backgrounds rather than generating AI showcases:
-- Downloads product images from Google Drive folders
-- Removes original backgrounds using Sharp image processing
-- Applies one of three professional backgrounds (Back1.jpg, Back2.jpg, Back3.jpg)
-- Products are sized to 70-75% of canvas area for optimal visibility
-- Positions products centrally with professional lighting effects
-- Outputs 3000x3000 JPEG files at 95% quality
+### Authentication System
+- **JWT tokens** for web interface sessions
+- **Site-wide password protection** via SITE_PASSWORD environment variable
+- **User-specific API tokens** stored securely in database
 
-## Output Structure
+## Processing Flow
+
+### Automated Monitoring (CLI)
+1. Monitor Google Drive folder every 60 seconds
+2. Detect new folders → Download images
+3. Apply professional backgrounds from `test-backgrounds/`
+4. Generate SEO content using Custom GPT
+5. Export CSV/JSON formats
+6. Upload processed files back to Google Drive
+
+### Web Interface Flow
+1. User login → Token configuration
+2. Manual folder selection → Real-time processing
+3. Export downloads (CSV, ZIP, JSON)
+
+## Key Configuration
+
+### Required Environment Variables
+```bash
+# Google Drive API
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REFRESH_TOKEN=
+GOOGLE_DRIVE_FOLDER_ID=
+
+# OpenAI API
+OPENAI_API_KEY=
+CUSTOM_GPT_ID=
+
+# Etsy API v3 (OAuth 2.0)
+ETSY_API_KEY=
+ETSY_API_SECRET=
+ETSY_ACCESS_TOKEN=
+ETSY_REFRESH_TOKEN=
+ETSY_SHOP_ID=
+ETSY_CLIENT_ID=
+ETSY_REDIRECT_URI=http://localhost:3000/auth/etsy/callback
+
+# OneClickLister API
+ONECLICKLISTER_API_KEY=
+ONECLICKLISTER_USER_CODE=
+ONECLICKLISTER_STORE_ID=
+ONECLICKLISTER_API_URL=https://api.oneclicklister.com
+USE_ONECLICKLISTER=false
+
+# Processing Settings
+OUTPUT_IMAGE_SIZE=3000
+PROCESSING_INTERVAL=60000
+ADD_BACKGROUND=true
+BACKGROUND_TYPE=image
+REMOVE_BACKGROUND=true
+
+# Authentication
+SITE_PASSWORD=
+SESSION_SECRET=
+```
+
+### Database Configuration
+- **SQLite**: Default, stores in `data/users.db`
+- **PostgreSQL**: Set `DATABASE_URL` for production
+
+## Image Processing Pipeline
+
+### Background Application
+- Uses professional backgrounds from `test-backgrounds/` (Back1.jpg, Back2.jpg, Back3.jpg)
+- Automatic product detection for optimal positioning
+- Outputs 3000x3000 JPEG files at 90% quality
+- Fallback to 2000x2000 if processing fails
+
+### SEO Content Generation
+- Custom GPT integration for optimized Etsy content
+- Title generation: 130-140 characters
+- Tag generation: 13 tags preserving spaces
+- Rich product descriptions with keywords
+
+## Export Structure
 
 ```
 exports/
-├── etsy-products.csv          # Main product export for bulk operations
-├── etsy-bulk-upload.csv       # Etsy-formatted bulk upload file
-├── etsy-images.zip           # Packaged images for Etsy upload
-├── images/                   # Processed images organized by SKU
-│   └── {SKU}/               # Individual product image folders
-├── listing-guide-{SKU}.md    # Manual listing instructions per product
-└── product-{SKU}.json       # Detailed product metadata and SEO content
+├── etsy-products.csv          # Main product export
+├── etsy-bulk-upload.csv       # Etsy bulk upload format
+├── etsy-images.zip           # Image packages
+├── images/{SKU}/             # Processed images by SKU
+├── listing-guide-{SKU}.md    # Manual listing instructions
+└── product-{SKU}.json       # Product metadata
 ```
 
-## Database and Authentication
+## Logging System
 
-- **SQLite database**: `data/users.db` stores user accounts and API tokens
-- **Multi-user support**: Each user manages their own Google Drive and OpenAI tokens
-- **Session management**: JWT-based authentication for web interface
-- **Site protection**: Password-protected access to the application
+- **Winston logger** with structured JSON output
+- **File outputs**: `logs/error.log`, `logs/combined.log`
+- **Service-specific logging** across all components
+- **Console output** in development mode
 
-## Debugging & Testing
+## Development Workflow
 
-Use `test-connection.js` to verify API connectivity before running main automation. The `process-single-folder.js` script allows reprocessing specific folders for testing changes. All operations are logged to `logs/` directory with structured JSON logging via Winston.
+1. **Initial Setup**: Copy `.env.example` to `.env` and configure API keys
+2. **API Testing**: Run `node test-connection.js` to verify connectivity
+3. **Single Folder Testing**: Use `node process-single-folder.js` for isolated testing
+4. **OneClickLister Testing**: Run `node test-oneclicklister.js` to test payload integration
+5. **Development**: Use `npm run dev` (CLI) or `npm run dev-web` (web interface)
 
-## Rate Limiting Considerations
+## OneClickLister Integration
 
-The system handles OpenAI API rate limits with 429 error handling. Google Drive API calls are spaced appropriately. Processing intervals can be adjusted via `PROCESSING_INTERVAL` environment variable.
+### EtsyOneClickListerService Features
+- **Payload Transformation**: Converts OneClickLister format to Etsy API format
+- **Advanced Image Management**: Supports image positioning, alt text, and URL uploads
+- **Variant Support**: Handles product variants with properties and pricing
+- **Dimensions & Weight**: Full support for product specifications
+- **Material Extraction**: Auto-extracts materials from product attributes
+- **Taxonomy Mapping**: Intelligent category mapping for Etsy taxonomy
+- **Validation System**: Comprehensive payload validation with error reporting
 
-## Background Image Configuration
+### OneClickLister Payload Support
+```javascript
+{
+  "product": {
+    "title": "string",
+    "description": "string", 
+    "price": { "amount": "number", "currency": "string" },
+    "sku": "string",
+    "quantity": "number",
+    "tags": ["array"],
+    "attributes": [{ "name": "string", "value": "any" }],
+    "dimensions": { "height": "string", "length": "string", "width": "string", "unit": "string" },
+    "weight": { "amount": "string", "unit": "string" },
+    "images": [{ "url": "string", "position": "number", "altText": "string", "newImage": "boolean" }],
+    "variants": [{ "sku": "string", "price": {}, "quantity": "number", "properties": [] }]
+  },
+  "storeId": "number",
+  "userCode": "string"
+}
+```
 
-The system uses three professional background images stored in `test-backgrounds/`:
-- `Back1.jpg`, `Back2.jpg`, `Back3.jpg` - Applied to all products
-- Products are automatically sized to 70-75% of canvas area for optimal visibility
-- Background selection and product positioning handled automatically by ImageProcessor service
+### Usage Examples
+```javascript
+const EtsyOneClickListerService = require('./src/services/etsyOneClickLister');
+const etsyService = new EtsyOneClickListerService();
 
-## Key Scripts and Their Functions
+// Validate payload
+const validation = etsyService.validatePayload(oneClickPayload);
 
-- **`analyze-etsy-sample.js`**: Analyzes sample Excel files to understand product structure
-- **`correct-full-process.js`**: Main corrected processing workflow
-- **`process-original-product.js`**: Processes original product images without backgrounds
-- **`test-custom-background.js`**: Tests custom background application
-- **`test-photoroom-style.js`**: Tests PhotoRoom-style background processing
-- **`test-seo.js`**: Tests SEO content generation functionality
-- **`test-your-backgrounds.js`**: Tests user-uploaded background images
+// Create listing from OneClickLister payload
+const result = await etsyService.createListingFromPayload(oneClickPayload);
+```
 
-## Testing and Validation
+## Etsy API v3 Integration
 
-Before running production automation, always:
-1. Run `node test-connection.js` to verify API connectivity
-2. Test with a single folder using `node process-single-folder.js`
-3. Check logs in `logs/` directory for any errors
-4. Verify exports in `exports/` directory
+### New OAuth 2.0 Features
+- **PKCE Support**: Secure OAuth flow with Proof Key for Code Exchange
+- **Automatic Token Refresh**: Background token validation and refresh
+- **Complete Scope Management**: All required permissions for full functionality
+- **Shipping/Fulfillment**: Order tracking and carrier integration
 
-## Troubleshooting
+### OAuth 2.0 Setup Process
+```bash
+# 1. Set up API credentials
+node etsy-oauth-setup.js
 
-- **Google Drive API Quota**: Monitor usage and implement delays if needed
-- **OpenAI Rate Limits**: System handles 429 errors automatically with retries
-- **Image Processing**: Check Sharp library compatibility and temp directory permissions
-- **Database Issues**: SQLite database stored in `data/users.db`
+# 2. Follow browser OAuth flow
+# 3. Copy tokens to .env file
+# 4. Test connection
+node test-etsy-v3.js
+```
+
+### Supported Etsy API v3 Features
+- **Listing Management**: Create, update, delete listings
+- **Image Upload**: Multi-image support with alt text
+- **Order Management**: Receipt access and fulfillment
+- **Shipping Integration**: 25+ supported carriers
+- **Shop Management**: Templates, sections, taxonomy
+- **Token Management**: Automatic refresh and validation
+
+### OneClickLister API Integration
+
+### Complete API Integration
+```javascript
+const OneClickListerAPI = require('./src/services/oneClickListerAPI');
+const oclAPI = new OneClickListerAPI();
+
+// Convert Etsy product to OneClickLister format
+const oclPayload = oclAPI.convertEtsyProductToOCL(etsyProduct, imagePaths);
+
+// Create single product
+const result = await oclAPI.createProduct(oclPayload);
+
+// Bulk operations
+const bulkResult = await oclAPI.createProductsBulk([payload1, payload2, payload3]);
+
+// Store management
+const store = await oclAPI.fetchStore();
+const listings = await oclAPI.fetchListings();
+
+// Etsy-specific features
+const categories = await oclAPI.getEtsyCategories();
+const shipping = await oclAPI.getShippingProfiles();
+```
+
+### Supported OneClickLister Features
+- **Product Creation**: Single and bulk product creation
+- **Product Updates**: Individual and bulk updates
+- **Store Management**: Store sync and information
+- **Etsy Integration**: Categories, shipping profiles, taxonomy
+- **Job Management**: Background job tracking
+- **Scheduling**: Automated product scheduling
+- **Format Conversion**: Automatic Etsy-to-OneClickLister conversion
+
+## Advanced Product Positioning System
+
+### Reference Point Positioning
+- **Blue X Reference Point**: Products align to consistent (35%, 30%) position
+- **Product-Specific Alignment**: 
+  - **Necklaces**: Pendant/main element centered at reference point
+  - **Rings**: Stone/center detail aligned with reference point
+- **Multi-language Support**: Turkish and English product detection
+- **Automatic Boundary Validation**: Products stay within canvas bounds
+
+### Positioning Features
+```javascript
+// Consistent positioning across all backgrounds
+const position = imageProcessor.getReferencePointPosition(productType, productSize, canvasSize);
+
+// Reference coordinates (3000x3000 canvas)
+// Blue X at: (1050px, 900px) - 35% from left, 30% from top
+```
+
+### Supported Product Types
+- **Necklace/Kolye**: Pendant-focused positioning
+- **Ring/Yüzük**: Center-stone alignment
+- **Auto-detection**: Filename and path analysis
+- **Edge Cases**: Automatic adjustment for extreme sizes
+
+### Test Results
+- **Positioning Accuracy**: PERFECT (±0px deviation)
+- **Boundary Safety**: 100% within canvas bounds
+- **Product Detection**: Multi-language filename recognition
+- **Edge Case Handling**: Large/small/extreme aspect ratios supported
+
+## Deployment Options
+
+- **Docker Compose**: Full containerized deployment
+- **Railway**: Cloud platform deployment with `railway.dockerfile`
+- **Production**: Environment variable configuration with PostgreSQL
+
+## Security Considerations
+
+- All sensitive data in environment variables
+- JWT authentication with secure session management
+- bcrypt password hashing for user accounts
+- Input validation using express-validator

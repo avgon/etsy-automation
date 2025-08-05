@@ -3,17 +3,58 @@ const fs = require('fs-extra');
 const FormData = require('form-data');
 const config = require('../config');
 const logger = require('../utils/logger');
+const EtsyOAuthService = require('./etsyOAuth');
 
 class EtsyService {
   constructor() {
     this.apiKey = config.etsy.apiKey;
     this.shopId = config.etsy.shopId;
     this.accessToken = config.etsy.accessToken;
-    this.baseURL = 'https://openapi.etsy.com/v3';
+    this.refreshToken = config.etsy.refreshToken;
+    this.baseURL = config.etsy.baseURL;
+    this.oauthService = new EtsyOAuthService();
+  }
+
+  /**
+   * Get valid headers for Etsy API v3 requests
+   * @param {string} contentType - Content type (optional)
+   * @returns {Object} - Headers object
+   */
+  getApiHeaders(contentType = 'application/json') {
+    return {
+      'Authorization': `Bearer ${this.accessToken}`,
+      'x-api-key': this.apiKey,
+      'Content-Type': contentType
+    };
+  }
+
+  /**
+   * Validate and refresh token if needed
+   */
+  async ensureValidToken() {
+    try {
+      if (this.refreshToken) {
+        const tokenData = await this.oauthService.validateAndRefreshToken(
+          this.accessToken,
+          this.refreshToken,
+          Date.now() + 3600000 // Default 1 hour if no expiry known
+        );
+        
+        if (tokenData.accessToken !== this.accessToken) {
+          this.accessToken = tokenData.accessToken;
+          logger.info('Access token refreshed automatically');
+        }
+      }
+    } catch (error) {
+      logger.warn('Token refresh failed', { error: error.message });
+    }
   }
 
   async createListing(listingData) {
     try {
+      // Ensure token is valid before making request
+      await this.ensureValidToken();
+      
       const url = `${this.baseURL}/application/shops/${this.shopId}/listings`;
       
       const payload = {
@@ -42,11 +83,7 @@ class EtsyService {
       };
 
       const response = await axios.post(url, payload, {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'x-api-key': this.apiKey,
-          'Content-Type': 'application/json'
-        }
+        headers: this.getApiHeaders()
       });
 
       logger.info('Listing created successfully', { 
@@ -66,6 +103,8 @@ class EtsyService {
 
   async uploadListingImage(listingId, imagePath, rank = 1) {
     try {
+      await this.ensureValidToken();
+      
       const url = `${this.baseURL}/application/shops/${this.shopId}/listings/${listingId}/images`;
       
       const form = new FormData();
@@ -101,13 +140,12 @@ class EtsyService {
 
   async getShippingTemplates() {
     try {
+      await this.ensureValidToken();
+      
       const url = `${this.baseURL}/application/shops/${this.shopId}/shipping-templates`;
       
       const response = await axios.get(url, {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'x-api-key': this.apiKey
-        }
+        headers: this.getApiHeaders()
       });
 
       return response.data.results;
@@ -115,6 +153,136 @@ class EtsyService {
       logger.error('Error getting shipping templates', { error: error.message });
       throw error;
     }
+  }
+
+  /**
+   * Add tracking information to a receipt (order fulfillment)
+   * @param {string} receiptId - Receipt ID from Etsy
+   * @param {string} trackingCode - Tracking code from carrier
+   * @param {string} carrierName - Carrier name (fedex, ups, usps, dhl, etc.)
+   * @returns {Object} - Tracking response
+   */
+  async addTrackingToReceipt(receiptId, trackingCode, carrierName) {
+    try {
+      await this.ensureValidToken();
+      
+      const url = `${this.baseURL}/application/shops/${this.shopId}/receipts/${receiptId}/tracking`;
+      
+      // Use form-encoded data as specified in Etsy API v3 docs
+      const params = new URLSearchParams({
+        tracking_code: trackingCode,
+        carrier_name: carrierName.toLowerCase()
+      });
+
+      const response = await axios.post(url, params, {
+        headers: this.getApiHeaders('application/x-www-form-urlencoded')
+      });
+
+      logger.info('Tracking added to receipt', { 
+        receiptId,
+        trackingCode,
+        carrierName
+      });
+
+      return response.data;
+    } catch (error) {
+      logger.error('Error adding tracking to receipt', { 
+        error: error.response?.data || error.message,
+        receiptId,
+        trackingCode,
+        carrierName
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get receipt information
+   * @param {string} receiptId - Receipt ID
+   * @returns {Object} - Receipt data
+   */
+  async getReceipt(receiptId) {
+    try {
+      await this.ensureValidToken();
+      
+      const url = `${this.baseURL}/application/shops/${this.shopId}/receipts/${receiptId}`;
+      
+      const response = await axios.get(url, {
+        headers: this.getApiHeaders()
+      });
+
+      return response.data;
+    } catch (error) {
+      logger.error('Error getting receipt', { 
+        error: error.response?.data || error.message,
+        receiptId
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get all receipts for the shop
+   * @param {Object} options - Query options (limit, offset, etc.)
+   * @returns {Array} - List of receipts
+   */
+  async getReceipts(options = {}) {
+    try {
+      await this.ensureValidToken();
+      
+      const params = new URLSearchParams({
+        limit: options.limit || 25,
+        offset: options.offset || 0,
+        was_paid: options.wasPaid !== undefined ? options.wasPaid : true,
+        was_shipped: options.wasShipped !== undefined ? options.wasShipped : false
+      });
+
+      const url = `${this.baseURL}/application/shops/${this.shopId}/receipts?${params}`;
+      
+      const response = await axios.get(url, {
+        headers: this.getApiHeaders()
+      });
+
+      return response.data.results;
+    } catch (error) {
+      logger.error('Error getting receipts', { 
+        error: error.response?.data || error.message
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get supported carriers for tracking
+   * @returns {Array} - List of supported carriers
+   */
+  getSupportedCarriers() {
+    return [
+      'ups',
+      'fedex', 
+      'usps',
+      'dhl',
+      'royal-mail',
+      'canada-post',
+      'la-poste',
+      'deutsche-post',
+      'poste-italiane',
+      'correos-espana',
+      'ptt-post',
+      'tnt',
+      'dpd',
+      'gls',
+      'hermes',
+      'yodel',
+      'parcelforce',
+      'australia-post',
+      'japan-post',
+      'singapore-post',
+      'hongkong-post',
+      'china-post',
+      'korean-post',
+      'other'
+    ];
   }
 
   async getShopSections() {
