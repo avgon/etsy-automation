@@ -175,15 +175,99 @@ class OneClickListerAPI {
   }
 
   /**
-   * Fetch store information
-   * @returns {Object} - Store information
+   * Fetch all connected stores
+   * @returns {Array} - List of connected stores
    */
   async fetchStores() {
     try {
       const response = await this.makeRequest('GET', '/api/stores');
+      logger.info('Fetched stores', { 
+        storeCount: response.length || 0 
+      });
       return response;
     } catch (error) {
       logger.error('Error fetching stores');
+      throw error;
+    }
+  }
+
+  /**
+   * Set active store for operations
+   * @param {string|number} storeId - Store ID to set as active
+   * @returns {Object} - Store information
+   */
+  async setActiveStore(storeId) {
+    try {
+      this.storeId = storeId;
+      logger.info('Active store set', { storeId });
+
+      // Verify store exists and get info
+      const stores = await this.fetchStores();
+      const activeStore = stores.find(store => 
+        store.id == storeId || store.store_id == storeId
+      );
+
+      if (!activeStore) {
+        throw new Error(`Store with ID ${storeId} not found`);
+      }
+
+      return activeStore;
+    } catch (error) {
+      logger.error('Error setting active store', { storeId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Get current active store information
+   * @returns {Object} - Active store info
+   */
+  async getActiveStore() {
+    if (!this.storeId) {
+      throw new Error('No active store set. Use setActiveStore() first.');
+    }
+
+    try {
+      const stores = await this.fetchStores();
+      const activeStore = stores.find(store => 
+        store.id == this.storeId || store.store_id == this.storeId
+      );
+
+      if (!activeStore) {
+        throw new Error(`Active store ${this.storeId} not found`);
+      }
+
+      return activeStore;
+    } catch (error) {
+      logger.error('Error getting active store', { storeId: this.storeId });
+      throw error;
+    }
+  }
+
+  /**
+   * List all available stores with their platforms
+   * @returns {Array} - Formatted store list
+   */
+  async listStoresForSelection() {
+    try {
+      const stores = await this.fetchStores();
+      
+      const formattedStores = stores.map((store, index) => ({
+        index: index + 1,
+        storeId: store.id || store.store_id,
+        storeName: store.name || store.shop_name,
+        platform: store.platform || 'etsy',
+        status: store.status || 'active',
+        isActive: (store.id || store.store_id) == this.storeId
+      }));
+
+      logger.info('Store selection list prepared', { 
+        totalStores: formattedStores.length 
+      });
+
+      return formattedStores;
+    } catch (error) {
+      logger.error('Error listing stores for selection');
       throw error;
     }
   }
@@ -220,19 +304,27 @@ class OneClickListerAPI {
   /**
    * Create a single product using OneClickLister payload format
    * @param {Object} productPayload - OneClickLister product payload
+   * @param {string|number} targetStoreId - Optional specific store ID
    * @returns {Object} - Created product response
    */
-  async createProduct(productPayload) {
+  async createProduct(productPayload, targetStoreId = null) {
     try {
       // Validate payload structure
       if (!productPayload.product) {
         throw new Error('Invalid payload: missing product object');
       }
 
+      // Determine which store to use
+      const storeId = targetStoreId || productPayload.storeId || this.storeId;
+      
+      if (!storeId) {
+        throw new Error('No store specified. Set active store with setActiveStore() or provide targetStoreId');
+      }
+
       // Ensure storeId and userCode are set
       const payload = {
         ...productPayload,
-        storeId: productPayload.storeId || this.storeId,
+        storeId: storeId,
         userCode: productPayload.userCode || this.userCode
       };
 
@@ -246,14 +338,16 @@ class OneClickListerAPI {
       
       logger.info('Product created successfully', { 
         productId: response.productId || response.id,
-        title: payload.product.title
+        title: payload.product.title,
+        storeId: payload.storeId
       });
 
       return response;
     } catch (error) {
       logger.error('Error creating product', { 
         error: error.message,
-        title: productPayload.product?.title
+        title: productPayload.product?.title,
+        storeId: targetStoreId
       });
       throw error;
     }

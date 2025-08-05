@@ -24,6 +24,8 @@ node test-oneclicklister.js     # Test OneClickLister payload integration
 node test-etsy-v3.js           # Test Etsy API v3 integration
 node test-oneclicklister-api.js # Test OneClickLister API integration
 node test-product-positioning.js # Test product positioning system
+node store-selector.js list      # List OneClickLister stores
+node store-selector.js set 1     # Set active store
 ```
 
 ### Setup & Utilities
@@ -267,6 +269,67 @@ const shipping = await oclAPI.getShippingProfiles();
 - **Job Management**: Background job tracking
 - **Scheduling**: Automated product scheduling
 - **Format Conversion**: Automatic Etsy-to-OneClickLister conversion
+- **Store Management**: Multi-store support with automatic selection
+
+## Store Management System
+
+### Multi-Store Support
+OneClickLister supports multiple connected stores (Etsy, Shopify). Your automation needs to know which store to target.
+
+### Store Selection Methods
+
+#### 1. Interactive Store Selection
+```bash
+node store-selector.js list      # List all connected stores
+node store-selector.js current   # Show current active store
+node store-selector.js set 1     # Set first store as active
+node store-selector.js set 12345 # Set store by ID
+```
+
+#### 2. Programmatic Store Management
+```javascript
+const StoreSelector = require('./store-selector');
+const selector = new StoreSelector();
+
+// List all stores
+const stores = await selector.selectStore();
+
+// Set active store
+await selector.setActiveStore(1); // By index
+await selector.setActiveStore('12345'); // By ID
+await selector.setActiveStore('MyStore'); // By name
+
+// Create product in specific store
+await selector.createProductWithStore(productPayload, storeId);
+```
+
+#### 3. Environment Variable Default
+```env
+ONECLICKLISTER_DEFAULT_STORE=your_default_store_id
+```
+
+### Store Selection Workflow
+1. **First Time Setup**: Run `node store-selector.js list` to see available stores
+2. **Set Default**: Use `node store-selector.js set <id>` to set active store
+3. **Product Creation**: Products will automatically go to the active store
+4. **Multi-Store**: Override per operation with `targetStoreId` parameter
+
+### Store Information Display
+```
+🏪 OneClickLister Store Selection
+
+✅ Found 2 connected store(s):
+
+1. 🎨 My Etsy Shop
+   Store ID: 12345
+   Platform: ETSY
+   Status: 🟢 active 👈 ACTIVE
+
+2. 🛍️ My Shopify Store
+   Store ID: 67890
+   Platform: SHOPIFY  
+   Status: 🟢 active
+```
 
 ## Advanced Product Positioning System
 
