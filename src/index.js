@@ -119,12 +119,12 @@ class EtsyAutomation {
         // Generate SEO content first using original images
         const seoContent = await this.generateSEOContent(folder.name, downloadedImages.map(img => img.originalPath), sku);
         
-        // Then process images with SEO context
+        // Then process images with SEO context - create all background combinations
         for (const imageData of downloadedImages) {
           try {
-            const processedImagePath = await this.processImageWithSEO(imageData, folderWorkDir, seoContent);
-            if (processedImagePath) {
-              processedImages.push(processedImagePath);
+            const processedImagePaths = await this.processImageWithAllBackgrounds(imageData, folderWorkDir, seoContent);
+            if (processedImagePaths && processedImagePaths.length > 0) {
+              processedImages.push(...processedImagePaths);
             }
           } catch (error) {
             logger.error('Error processing image with SEO', { 
@@ -263,6 +263,78 @@ class EtsyAutomation {
     }
   }
 
+  async processImageWithAllBackgrounds(imageData, workingDir, seoContent) {
+    try {
+      logger.info('Processing image with all backgrounds', { 
+        imageId: imageData.imageId, 
+        imageName: imageData.imageName,
+        productTitle: seoContent.title
+      });
+      
+      const processedPaths = [];
+      
+      // Check if background processing is enabled
+      if (config.processing.addBackground) {
+        // Create all background combinations
+        const fileName = imageData.imageName;
+        const baseName = path.basename(fileName, path.extname(fileName));
+        const extension = path.extname(fileName);
+        
+        // SEO content'ten ürün tipini belirle
+        const productType = this.detectProductType(seoContent);
+        
+        const backgroundCombinations = await this.imageProcessor.createAllBackgroundCombinations(
+          imageData.originalPath,
+          workingDir,
+          fileName,
+          productType
+        );
+        
+        // Resize each background combination
+        for (const combination of backgroundCombinations) {
+          const finalPath = path.join(workingDir, `processed_${combination.backgroundName}_${baseName}${extension}`);
+          
+          await this.imageProcessor.resizeImage(
+            combination.outputPath,
+            finalPath,
+            3000
+          );
+          
+          processedPaths.push(finalPath);
+          
+          logger.info('Background combination processed', { 
+            imageId: imageData.imageId, 
+            backgroundName: combination.backgroundName,
+            processedPath: finalPath,
+            seoTitle: seoContent.title
+          });
+        }
+      } else {
+        // Just resize without background
+        const processedPath = await this.imageProcessor.resizeImage(
+          imageData.originalPath,
+          path.join(workingDir, `processed_${imageData.imageName}`),
+          3000
+        );
+        
+        processedPaths.push(processedPath);
+        
+        logger.info('Image processed without background', { 
+          imageId: imageData.imageId, 
+          processedPath 
+        });
+      }
+      
+      return processedPaths;
+    } catch (error) {
+      logger.error('Error processing image with all backgrounds', { 
+        error: error.message, 
+        imageId: imageData.imageId 
+      });
+      return [];
+    }
+  }
+
   async processImage(image, workingDir, productType) {
     try {
       logger.info('Processing image', { imageId: image.id, imageName: image.name });
@@ -358,7 +430,7 @@ class EtsyAutomation {
       
       const productData = {
         title: seoContent.title,
-        description: seoContent.description + `\n\nSKU: ${sku}`,
+        description: seoContent.description,
         price: seoContent.priceRange ? parseFloat(seoContent.priceRange.split('-')[0]) : 19.99,
         tags: seoContent.tags,
         categories: seoContent.categories,
@@ -428,6 +500,12 @@ class EtsyAutomation {
   inferProductType(folderName) {
     const name = folderName.toLowerCase();
     
+    // Jewelry detection
+    if (name.includes('necklace') || name.includes('pendant') || name.includes('kolye')) return 'pendant';
+    if (name.includes('ring') || name.includes('yüzük') || name.includes('yuzuk')) return 'ring';
+    if (name.includes('earring') || name.includes('küpe')) return 'earring';
+    if (name.includes('bracelet') || name.includes('bilezik')) return 'bracelet';
+    
     if (name.includes('mug') || name.includes('cup')) return 'mug';
     if (name.includes('shirt') || name.includes('tshirt') || name.includes('tee')) return 'shirt';
     if (name.includes('poster') || name.includes('print')) return 'poster';
@@ -436,6 +514,35 @@ class EtsyAutomation {
     if (name.includes('phone') || name.includes('case')) return 'phone case';
     if (name.includes('sticker')) return 'sticker';
     if (name.includes('card')) return 'greeting card';
+    
+    return 'product'; // Default fallback
+  }
+
+  detectProductType(seoContent) {
+    // SEO content'ten ürün tipini belirle
+    const title = (seoContent.title || '').toLowerCase();
+    const description = (seoContent.description || '').toLowerCase();
+    const tags = Array.isArray(seoContent.tags) ? seoContent.tags.join(' ').toLowerCase() : '';
+    
+    const combinedText = `${title} ${description} ${tags}`;
+    
+    // Jewelry detection
+    if (combinedText.includes('necklace') || combinedText.includes('pendant') || combinedText.includes('kolye')) {
+      return 'pendant';
+    }
+    if (combinedText.includes('ring') || combinedText.includes('yüzük') || combinedText.includes('yuzuk')) {
+      return 'ring';
+    }
+    if (combinedText.includes('earring') || combinedText.includes('küpe')) {
+      return 'earring';
+    }
+    if (combinedText.includes('bracelet') || combinedText.includes('bilezik')) {
+      return 'bracelet';
+    }
+    
+    // Other products
+    if (combinedText.includes('mug') || combinedText.includes('cup')) return 'mug';
+    if (combinedText.includes('shirt') || combinedText.includes('tshirt')) return 'shirt';
     
     return 'product'; // Default fallback
   }

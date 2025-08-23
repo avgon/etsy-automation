@@ -93,41 +93,40 @@ class OpenAIService {
     }
   }
 
-  async generateEtsySEO(productInfo, imagePaths) {
+  async generateEtsySEO(productInfo, imagePaths, customGptId) {
     try {
-      const prompt = `ULTRA LISTING MODE ACTIVATED 🔥
+      const prompt = `You are an expert Etsy SEO specialist. Analyze the provided product images and create a complete Etsy listing optimization package.
 
-Analyze these product images and create a KILLER Etsy SEO package. 
-
-I need you to operate as the expert Killer Listing SEO Creator and provide FULL SEO optimization:
-
-Product Type: ${productInfo.type}
-Image Count: ${imagePaths.length} photos
+Product Information:
+- Type: ${productInfo.type}
+- Name: ${productInfo.name}
+- Images: ${imagePaths.length} photos
 
 CRITICAL REQUIREMENTS:
-- TITLE: Must be 130-140 characters (NOT shorter!)
-- TAGS: No dashes or special characters (clean words only)
-- Use maximum space for SEO power
-- Pack with high-search keywords
+1. Title MUST be exactly 130-140 characters (not shorter!)
+2. Must include high-volume keywords
+3. Must be sales-focused and compelling
+4. Response MUST be valid JSON only
 
-Please provide your complete SEO package in this exact format:
+Create an optimized Etsy listing:
+- Title: EXACTLY 130-140 characters (pack with keywords)
+- Tags: 13 single words (no spaces, no dashes)
+- Description: Compelling sales copy with keywords
+- Price: Competitive USD price
+- Categories: 2 relevant Etsy categories
 
-TITLE: [Write a LONG 130-140 character title using many descriptive keywords]
+TITLE REQUIREMENT: The title must be between 130-140 characters. Use every character for maximum SEO impact.
 
-TAGS: [13 clean strategic tags separated by commas, each max 20 characters, NO DASHES]
+Response format (EXACTLY as shown):
+{
+  "title": "Your SEO optimized title with maximum keywords that must be exactly between 130-140 characters to maximize Etsy search visibility",
+  "tags": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5", "keyword6", "keyword7", "keyword8", "keyword9", "keyword10", "keyword11", "keyword12", "keyword13"],
+  "description": "Compelling product description that drives sales and includes keywords naturally",
+  "price": "29.99",
+  "categories": ["Jewelry", "Necklaces"]
+}
 
-DESCRIPTION: [Your best compelling, keyword-rich description]
-
-PRICE RANGE: [Suggested price range like 19.99-39.99]
-
-CATEGORIES: [2 relevant Etsy categories]
-
-IMPORTANT: 
-- Title MUST use 130-140 characters (current trend for max SEO)
-- Tags must be clean words without dashes or special characters
-- Use ALL available space for maximum keyword density
-
-Work your magic! Give me the longest, most powerful Etsy listing possible.`;
+RESPOND ONLY WITH THE JSON OBJECT. TITLE MUST BE 130-140 CHARACTERS.`;
 
       // Prepare messages with images
       const messageContent = [{ type: "text", text: prompt }];
@@ -137,10 +136,13 @@ Work your magic! Give me the longest, most powerful Etsy listing possible.`;
         for (const imagePath of imagePaths) {
           try {
             const imageBase64 = require('fs').readFileSync(imagePath, 'base64');
+            const extension = require('path').extname(imagePath).toLowerCase();
+            const mimeType = extension === '.png' ? 'image/png' : 'image/jpeg';
+            
             messageContent.push({
               type: "image_url",
               image_url: {
-                url: `data:image/jpeg;base64,${imageBase64}`
+                url: `data:${mimeType};base64,${imageBase64}`
               }
             });
           } catch (imageError) {
@@ -151,38 +153,122 @@ Work your magic! Give me the longest, most powerful Etsy listing possible.`;
         logger.warn('imagePaths is not an array', { imagePaths, type: typeof imagePaths });
       }
 
-      // Use GPT-4o with vision for image analysis
-      const response = await this.openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [
-          {
-            role: "system",
-            content: `You are the "Killer Listing SEO Creator" in ULTRA LISTING MODE - the most advanced Etsy SEO specialist. You analyze product images with expert precision and create ultra-high-converting, search-optimized listings that dominate Etsy search results. You understand visual product analysis, Etsy's algorithm, buyer psychology, and advanced keyword optimization. Your Ultra Listings consistently outrank all competitors.`
-          },
-          { 
-            role: "user", 
-            content: messageContent
-          }
-        ],
-        max_tokens: 1200,
-        temperature: 0.7
-      });
-
-      // Parse the natural language response from SEO GPT
-      const responseContent = response.choices[0].message.content;
+      // Intelligent model selection: Custom GPT with GPT-4o fallback
+      let response;
+      let modelUsed = 'unknown';
       
-      const seoContent = {
-        title: this.extractSectionContent(responseContent, 'TITLE') || `${productInfo.name} - Handmade Quality`,
-        tags: this.extractTagsFromText(responseContent) || [productInfo.type, 'handmade', 'unique', 'gift'],
-        description: this.extractSectionContent(responseContent, 'DESCRIPTION') || `Beautiful ${productInfo.type}`,
-        priceRange: this.extractSectionContent(responseContent, 'PRICE RANGE') || '19.99-39.99',
-        categories: this.extractCategoriesFromText(responseContent) || [productInfo.type]
-      };
+      // Try Custom GPT first if available
+      if (customGptId && customGptId.startsWith('g-')) {
+        try {
+          response = await this.openai.chat.completions.create({
+            model: customGptId,
+            messages: [
+              { 
+                role: "user", 
+                content: messageContent
+              }
+            ],
+            max_tokens: 1500,
+            temperature: 0.7
+          });
+          modelUsed = 'Custom GPT';
+          logger.info('Successfully used Custom GPT for SEO generation', { customGptId });
+        } catch (customGptError) {
+          logger.warn('Custom GPT unavailable, using GPT-4o', { 
+            error: customGptError.message,
+            customGptId 
+          });
+          
+          // Fallback to GPT-4o (proven to work well)
+          response = await this.openai.chat.completions.create({
+            model: "gpt-4o",
+            messages: [
+              { 
+                role: "user", 
+                content: messageContent
+              }
+            ],
+            max_tokens: 1500,
+            temperature: 0.7
+          });
+          modelUsed = 'GPT-4o (fallback)';
+          logger.info('Using GPT-4o fallback - works perfectly for SEO generation');
+        }
+      } else {
+        // Direct GPT-4o if no Custom GPT ID
+        response = await this.openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { 
+              role: "user", 
+              content: messageContent
+            }
+          ],
+          max_tokens: 1500,
+          temperature: 0.7
+        });
+        modelUsed = 'GPT-4o (default)';
+        logger.info('Using GPT-4o for SEO generation');
+      }
 
-      logger.info('Generated Etsy SEO content with Killer Listing GPT approach', { 
+      // Custom GPT'den gelen JSON yanıtını direkt parse et
+      const responseContent = response.choices[0].message.content.trim();
+      
+      // JSON yanıtını parse et
+      let seoContent;
+      try {
+        // JSON'ın başında/sonunda gereksiz karakterler varsa temizle
+        const cleanJson = responseContent.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        seoContent = JSON.parse(cleanJson);
+        
+        // JSON validasyonu
+        if (!seoContent.title || !seoContent.tags || !seoContent.description || !seoContent.price) {
+          throw new Error('Custom GPT response missing required fields');
+        }
+        
+        // Title uzunluk kontrolü
+        const titleLength = seoContent.title.length;
+        if (titleLength < 130 || titleLength > 140) {
+          logger.warn('Title length not in optimal range', { 
+            titleLength, 
+            title: seoContent.title,
+            requiredRange: '130-140 characters'
+          });
+          
+          // Title'ı otomatik düzelt
+          if (titleLength < 130) {
+            // Kısa ise uzat
+            const padding = ' - Perfect Gift for Her Handmade Jewelry Unique Style';
+            seoContent.title = seoContent.title + padding.substring(0, 140 - titleLength);
+            logger.info('Title automatically extended', { 
+              newLength: seoContent.title.length,
+              newTitle: seoContent.title 
+            });
+          } else if (titleLength > 140) {
+            // Uzun ise kısalt
+            seoContent.title = seoContent.title.substring(0, 140);
+            logger.info('Title automatically trimmed', { 
+              newLength: seoContent.title.length,
+              newTitle: seoContent.title 
+            });
+          }
+        }
+        
+      } catch (parseError) {
+        logger.error('Failed to parse Custom GPT JSON response', { 
+          error: parseError.message, 
+          response: responseContent.substring(0, 500) 
+        });
+        throw new Error(`Custom GPT must return valid JSON format. Got: ${responseContent.substring(0, 200)}...`);
+      }
+
+      logger.info('Successfully generated SEO content', { 
         title: seoContent.title,
-        tagCount: seoContent.tags.length,
-        sku: productInfo.sku
+        titleLength: seoContent.title.length,
+        tagCount: seoContent.tags ? seoContent.tags.length : 0,
+        sku: productInfo.sku,
+        price: seoContent.price,
+        modelUsed: modelUsed
       });
       
       return seoContent;
@@ -192,41 +278,6 @@ Work your magic! Give me the longest, most powerful Etsy listing possible.`;
     }
   }
 
-  extractSectionContent(content, sectionName) {
-    const regex = new RegExp(`${sectionName}:\\s*(.+?)(?=\\n\\n|\\n[A-Z]+:|$)`, 'is');
-    const match = content.match(regex);
-    return match ? match[1].trim() : null;
-  }
-
-  extractTagsFromText(content) {
-    const tagSection = this.extractSectionContent(content, 'TAGS');
-    if (!tagSection) return null;
-    
-    // Try to extract tags from various formats
-    // Format: tag1, tag2, tag3
-    let tags = tagSection.split(/[,\n]/).map(tag => 
-      tag.trim()
-         .replace(/["\[\]]/g, '')     // Remove quotes and brackets
-         .replace(/^-\s*/, '')        // Remove leading dashes
-         .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special characters except spaces
-         .replace(/\s+/g, '')         // Remove all spaces (clean single words)
-    );
-    
-    // Filter out empty tags and limit to 13
-    tags = tags.filter(tag => tag.length > 0 && tag.length <= 20).slice(0, 13);
-    
-    return tags.length > 0 ? tags : null;
-  }
-
-  extractCategoriesFromText(content) {
-    const catSection = this.extractSectionContent(content, 'CATEGORIES');
-    if (!catSection) return null;
-    
-    // Extract categories separated by commas or newlines
-    const categories = catSection.split(/[,\n]/).map(cat => cat.trim().replace(/["\[\]]/g, ''));
-    
-    return categories.filter(cat => cat.length > 0).slice(0, 2);
-  }
 }
 
 module.exports = OpenAIService;

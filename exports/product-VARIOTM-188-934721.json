@@ -1,0 +1,31 @@
+{
+  "sku": "VARIOTM-188-934721",
+  "productData": {
+    "title": "VarioTM-188 - Handmade Quality",
+    "description": "Beautiful product",
+    "price": 19.99,
+    "tags": [
+      "product",
+      "handmade",
+      "unique",
+      "gift"
+    ],
+    "categories": [
+      "product"
+    ],
+    "quantity": 1,
+    "sku": "VARIOTM-188-934721"
+  },
+  "imagePaths": [
+    "/home/xmk/etsy-automation/temp/14r73hRX_RHlyxJY1XIRuOE3AeGCPlMue/processed_Back1_DSC_1067.png",
+    "/home/xmk/etsy-automation/temp/14r73hRX_RHlyxJY1XIRuOE3AeGCPlMue/processed_Back2_DSC_1067.png",
+    "/home/xmk/etsy-automation/temp/14r73hRX_RHlyxJY1XIRuOE3AeGCPlMue/processed_Back3_DSC_1067.png",
+    "/home/xmk/etsy-automation/temp/14r73hRX_RHlyxJY1XIRuOE3AeGCPlMue/processed_Back1_DSC_1050.png",
+    "/home/xmk/etsy-automation/temp/14r73hRX_RHlyxJY1XIRuOE3AeGCPlMue/processed_Back2_DSC_1050.png",
+    "/home/xmk/etsy-automation/temp/14r73hRX_RHlyxJY1XIRuOE3AeGCPlMue/processed_Back3_DSC_1050.png",
+    "/home/xmk/etsy-automation/temp/14r73hRX_RHlyxJY1XIRuOE3AeGCPlMue/processed_Back1_DSC_1029.png",
+    "/home/xmk/etsy-automation/temp/14r73hRX_RHlyxJY1XIRuOE3AeGCPlMue/processed_Back2_DSC_1029.png",
+    "/home/xmk/etsy-automation/temp/14r73hRX_RHlyxJY1XIRuOE3AeGCPlMue/processed_Back3_DSC_1029.png"
+  ],
+  "exportDate": "2025-07-03T16:09:10.225Z"
+}

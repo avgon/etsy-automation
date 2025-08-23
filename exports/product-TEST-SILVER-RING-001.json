@@ -1,0 +1,34 @@
+{
+  "sku": "TEST-SILVER-RING-001",
+  "productData": {
+    "title": "Handmade Silver Ring, Unique Geometric Design, Modern Statement Jewelry, Perfect Gift",
+    "description": "Beautiful handcrafted silver ring with intricate geometric patterns. This modern piece features an openwork design that catches the light beautifully. Perfect for everyday wear or special occasions.",
+    "price": 39.99,
+    "tags": [
+      "silverring",
+      "handmadejewelry",
+      "geometricdesign",
+      "statementjewelry",
+      "modernjewelry",
+      "uniquegift",
+      "artisanmade",
+      "elegantring",
+      "silverjewelry",
+      "fashionaccessory",
+      "giftforher",
+      "trendingjewelry",
+      "minimalistjewelry"
+    ],
+    "categories": [
+      "Jewelry",
+      "Rings"
+    ],
+    "quantity": 1
+  },
+  "imagePaths": [
+    "image1.jpg",
+    "image2.jpg",
+    "image3.jpg"
+  ],
+  "exportDate": "2025-07-03T14:53:09.752Z"
+}

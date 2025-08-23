@@ -87,23 +87,23 @@ class CSVExportService {
       imagePaths[i] ? this.getImageURL(imagePaths[i]) : ''
     );
 
-    // Etsy formatına göre sırala
+    // Custom GPT'den gelen JSON formatını direkt kullan
     return [
-      escapeCSV(productData.title),                    // TITLE
-      escapeCSV(productData.description),              // DESCRIPTION  
-      escapeCSV(productData.price),                    // PRICE
-      escapeCSV('USD'),                                // CURRENCY_CODE
-      escapeCSV(productData.quantity || 1),           // QUANTITY
-      escapeCSV(Array.isArray(productData.tags) ? productData.tags.join(', ') : productData.tags), // TAGS
-      escapeCSV(this.inferMaterials(productData)),    // MATERIALS
-      ...images.map(escapeCSV),                        // IMAGE1-IMAGE10
-      escapeCSV(''),                                   // VARIATION 1 TYPE
-      escapeCSV(''),                                   // VARIATION 1 NAME  
-      escapeCSV(''),                                   // VARIATION 1 VALUES
-      escapeCSV(''),                                   // VARIATION 2 TYPE
-      escapeCSV(''),                                   // VARIATION 2 NAME
-      escapeCSV(''),                                   // VARIATION 2 VALUES
-      escapeCSV(sku)                                   // SKU
+      escapeCSV(productData.title),                                    // TITLE
+      escapeCSV(productData.description),                              // DESCRIPTION  
+      escapeCSV(productData.price),                                    // PRICE (Custom GPT'den gelen)
+      escapeCSV('USD'),                                                // CURRENCY_CODE
+      escapeCSV(productData.quantity || 1),                           // QUANTITY
+      escapeCSV(Array.isArray(productData.tags) ? productData.tags.join(', ') : productData.tags), // TAGS (Custom GPT'den gelen array)
+      escapeCSV(this.inferMaterials(productData)),                    // MATERIALS
+      ...images.map(escapeCSV),                                        // IMAGE1-IMAGE10
+      escapeCSV(''),                                                   // VARIATION 1 TYPE
+      escapeCSV(''),                                                   // VARIATION 1 NAME  
+      escapeCSV(''),                                                   // VARIATION 1 VALUES
+      escapeCSV(''),                                                   // VARIATION 2 TYPE
+      escapeCSV(''),                                                   // VARIATION 2 NAME
+      escapeCSV(''),                                                   // VARIATION 2 VALUES
+      escapeCSV(sku)                                                   // SKU
     ].join(',');
   }
 
@@ -148,11 +148,11 @@ ${productData.description}
 ### Fiyat
 **${productData.price} USD**
 
-### Etiketler (13 adet)
-${productData.tags.map((tag, i) => `${i + 1}. ${tag}`).join('\n')}
+### Etiketler (${Array.isArray(productData.tags) ? productData.tags.length : 0} adet)
+${Array.isArray(productData.tags) ? productData.tags.map((tag, i) => `${i + 1}. ${tag}`).join('\n') : productData.tags}
 
 ### Kategoriler
-${productData.categories.join(', ')}
+${Array.isArray(productData.categories) ? productData.categories.join(', ') : (productData.categories || 'Belirtilmemiş')}
 
 ### Stok Miktarı
 ${productData.quantity || 1}

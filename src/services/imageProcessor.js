@@ -171,72 +171,176 @@ class ImageProcessor {
     }
   }
 
-  async addProductToBackground(productImagePath, backgroundImagePath, outputPath) {
+  async addProductToBackground(productImagePath, backgroundImagePath, outputPath, productType = null) {
     try {
-      // Load background image and resize to output size first
+      // Load background image and resize to output size first  
       const background = await sharp(backgroundImagePath)
         .resize(this.outputSize, this.outputSize, { fit: 'cover' })
         .jpeg({ quality: 95 })
         .toBuffer();
       
-      // Load product image - keep original without background removal
+      // Load product image with transparent background removal
       const product = sharp(productImagePath);
       const productMetadata = await product.metadata();
       
-      // Calculate product size: 45% of the final output canvas area
-      const targetArea = (this.outputSize * this.outputSize) * 0.45;
-      const aspectRatio = productMetadata.width / productMetadata.height;
+      // For your specific backgrounds (Back1, Back2, Back3), use optimized positioning
+      const backgroundName = require('path').basename(backgroundImagePath);
+      let productSize, leftPos, topPos;
       
-      let newWidth, newHeight;
-      if (aspectRatio >= 1) {
-        // Landscape or square
-        newWidth = Math.floor(Math.sqrt(targetArea * aspectRatio));
-        newHeight = Math.floor(newWidth / aspectRatio);
-      } else {
-        // Portrait
-        newHeight = Math.floor(Math.sqrt(targetArea / aspectRatio));
-        newWidth = Math.floor(newHeight * aspectRatio);
+      // Ürün tipini belirle (file adından veya productType parametresinden)
+      const fileName = require('path').basename(productImagePath).toLowerCase();
+      let detectedProductType = productType;
+      
+      if (!detectedProductType) {
+        if (fileName.includes('necklace') || fileName.includes('pendant') || fileName.includes('kolye')) {
+          detectedProductType = 'necklace';
+        } else if (fileName.includes('ring') || fileName.includes('yüzük') || fileName.includes('yuzuk')) {
+          detectedProductType = 'ring';
+        }
       }
       
-      // Resize product
+      if (backgroundName.startsWith('Back')) {
+        // Ürün tipine göre boyutlandırma
+        let targetAreaPercentage;
+        
+        if (detectedProductType === 'necklace' || detectedProductType === 'pendant') {
+          // Kolye/Pendant için büyük boyut (yüzükten 400% daha büyük görünüm)
+          targetAreaPercentage = 1.2; // 120% of canvas area (makul büyük görünüm)
+          logger.info('Using large necklace/pendant sizing for backgrounds', { 
+            productType: detectedProductType, 
+            areaPercentage: targetAreaPercentage * 100 
+          });
+        } else if (detectedProductType === 'ring') {
+          // Yüzük için normal boyut
+          targetAreaPercentage = 0.75; // 75% of canvas area (mevcut)
+          logger.info('Using normal ring sizing for backgrounds', { 
+            productType: detectedProductType, 
+            areaPercentage: targetAreaPercentage * 100 
+          });
+        } else {
+          // Diğer ürünler için varsayılan
+          targetAreaPercentage = 0.75; // 75% of canvas area
+          logger.info('Using default sizing for backgrounds', { 
+            productType: detectedProductType || 'unknown', 
+            areaPercentage: targetAreaPercentage * 100 
+          });
+        }
+        
+        const targetArea = (this.outputSize * this.outputSize) * targetAreaPercentage;
+        const aspectRatio = productMetadata.width / productMetadata.height;
+        
+        // Calculate dimensions to achieve 75% area coverage
+        const targetDimension = Math.sqrt(targetArea);
+        
+        if (aspectRatio >= 1) {
+          // Landscape or square - limit by width
+          productSize = { 
+            width: Math.floor(targetDimension * Math.sqrt(aspectRatio)),
+            height: Math.floor(targetDimension / Math.sqrt(aspectRatio))
+          };
+        } else {
+          // Portrait - limit by height  
+          productSize = { 
+            height: Math.floor(targetDimension / Math.sqrt(aspectRatio)),
+            width: Math.floor(targetDimension * Math.sqrt(aspectRatio))
+          };
+        }
+        
+        // Ensure minimum size for visibility but never exceed canvas
+        const minSize = Math.floor(this.outputSize * 0.70); // At least 70% of canvas dimension
+        const maxSize = Math.floor(this.outputSize * 0.95); // Never exceed 95% of canvas dimension
+        
+        // Apply minimum size constraint if needed
+        if (productSize.width < minSize && productSize.height < minSize) {
+          const scale = minSize / Math.max(productSize.width, productSize.height);
+          productSize.width = Math.floor(productSize.width * scale);
+          productSize.height = Math.floor(productSize.height * scale);
+        }
+        
+        // Apply maximum size constraint to prevent composite errors
+        if (productSize.width > maxSize || productSize.height > maxSize) {
+          const scale = maxSize / Math.max(productSize.width, productSize.height);
+          productSize.width = Math.floor(productSize.width * scale);
+          productSize.height = Math.floor(productSize.height * scale);
+        }
+        
+        // Center the product (50% from left, 50% from top)
+        leftPos = Math.floor((this.outputSize - productSize.width) / 2);
+        topPos = Math.floor((this.outputSize - productSize.height) / 2);
+        
+      } else {
+        // Original sizing for other backgrounds
+        const targetArea = (this.outputSize * this.outputSize) * 0.45;
+        const aspectRatio = productMetadata.width / productMetadata.height;
+        
+        if (aspectRatio >= 1) {
+          productSize = { 
+            width: Math.floor(Math.sqrt(targetArea * aspectRatio)),
+            height: Math.floor(Math.sqrt(targetArea * aspectRatio) / aspectRatio)
+          };
+        } else {
+          productSize = { 
+            height: Math.floor(Math.sqrt(targetArea / aspectRatio)),
+            width: Math.floor(Math.sqrt(targetArea / aspectRatio) * aspectRatio)
+          };
+        }
+        
+        // Center position for other backgrounds
+        leftPos = Math.floor((this.outputSize - productSize.width) / 2);
+        topPos = Math.floor((this.outputSize - productSize.height) / 2);
+      }
+      
+      // Resize product with background removal
       const resizedProduct = await product
-        .resize(newWidth, newHeight, { 
-          fit: 'cover',
-          position: 'center'
+        .resize(productSize.width, productSize.height, { 
+          fit: 'contain',
+          background: { r: 0, g: 0, b: 0, alpha: 0 } // Transparent background
         })
         .png()
         .toBuffer();
       
-      // Calculate exact center position
-      const left = Math.floor((this.outputSize - newWidth) / 2);
-      const top = Math.floor((this.outputSize - newHeight) / 2);
-      
-      // Create shadow (very subtle)
-      const shadowOffset = Math.floor(newWidth * 0.02); // 2% of product width
-      const shadowBlur = Math.floor(newWidth * 0.03);   // 3% of product width
-      
-      const shadow = await sharp(resizedProduct)
-        .modulate({ brightness: 0.3 }) // Dark shadow
-        .blur(shadowBlur)
-        .png()
-        .toBuffer();
-      
-      // Composite shadow first, then product onto background
-      await sharp(background)
-        .composite([
+      // Create subtle shadow only for Back backgrounds
+      let compositeOperations;
+      if (backgroundName.startsWith('Back')) {
+        // Simple composite without shadow for cleaner look
+        compositeOperations = [
+          {
+            input: resizedProduct,
+            left: leftPos,
+            top: topPos,
+            blend: 'over'
+          }
+        ];
+      } else {
+        // Original shadow for other backgrounds
+        const shadowOffset = Math.floor(productSize.width * 0.02);
+        const shadowBlur = Math.floor(productSize.width * 0.03);
+        
+        const shadow = await sharp(resizedProduct)
+          .modulate({ brightness: 0.3 })
+          .blur(shadowBlur)
+          .png()
+          .toBuffer();
+          
+        compositeOperations = [
           {
             input: shadow,
-            left: left + shadowOffset,
-            top: top + shadowOffset,
+            left: leftPos + shadowOffset,
+            top: topPos + shadowOffset,
             blend: 'multiply'
           },
           {
             input: resizedProduct,
-            left: left,
-            top: top,
+            left: leftPos,
+            top: topPos,
             blend: 'over'
           }
-        ])
+        ];
+      }
+      
+      // Composite onto background
+      await sharp(background)
+        .composite(compositeOperations)
         .jpeg({ quality: 95 })
         .toFile(outputPath);
       
@@ -244,10 +348,11 @@ class ImageProcessor {
         productImagePath,
         backgroundImagePath,
         outputPath,
-        productSize: `${newWidth}x${newHeight}`,
-        position: `${left}x${top}`,
+        productSize: `${productSize.width}x${productSize.height}`,
+        position: `${leftPos}x${topPos}`,
         canvasSize: `${this.outputSize}x${this.outputSize}`,
-        areaPercentage: ((newWidth * newHeight) / (this.outputSize * this.outputSize) * 100).toFixed(1) + '%'
+        backgroundType: backgroundName,
+        areaPercentage: ((productSize.width * productSize.height) / (this.outputSize * this.outputSize) * 100).toFixed(1) + '%'
       });
       
       return outputPath;
@@ -297,6 +402,77 @@ class ImageProcessor {
     const b = Math.round(rgb1.b + (rgb2.b - rgb1.b) * ratio);
     
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  }
+
+  async addBackground(inputPath, outputPath, options = {}) {
+    try {
+      const backgroundsDir = path.join(__dirname, '../../test-backgrounds');
+      const availableBackgrounds = ['Back1.jpg', 'Back2.jpg', 'Back3.jpg'];
+      
+      // Use specified background or default to Back1
+      const selectedBackground = options.backgroundName || 'Back1.jpg';
+      const backgroundPath = path.join(backgroundsDir, selectedBackground);
+      
+      // Check if background file exists
+      if (!await fs.pathExists(backgroundPath)) {
+        logger.warn('Background file not found, using white background', { backgroundPath });
+        // Fallback to white background
+        return await this.resizeImage(inputPath, outputPath, this.outputSize);
+      }
+      
+      logger.info('Adding background to product image', { 
+        inputPath, 
+        outputPath, 
+        selectedBackground,
+        backgroundPath,
+        productType: options.productType 
+      });
+      
+      // Use the addProductToBackground method with productType
+      return await this.addProductToBackground(inputPath, backgroundPath, outputPath, options.productType);
+      
+    } catch (error) {
+      logger.error('Error adding background', { error: error.message, inputPath });
+      // Fallback to just resizing without background
+      return await this.resizeImage(inputPath, outputPath, this.outputSize);
+    }
+  }
+
+  async createAllBackgroundCombinations(inputPath, outputDir, fileName, productType = null) {
+    try {
+      const backgroundsDir = path.join(__dirname, '../../test-backgrounds');
+      const availableBackgrounds = ['Back1.jpg', 'Back2.jpg', 'Back3.jpg'];
+      const results = [];
+      
+      // Create combinations with each background
+      for (const background of availableBackgrounds) {
+        const backgroundPath = path.join(backgroundsDir, background);
+        
+        if (await fs.pathExists(backgroundPath)) {
+          const backgroundName = path.basename(background, path.extname(background));
+          const outputPath = path.join(outputDir, `${backgroundName}_${fileName}`);
+          
+          await this.addProductToBackground(inputPath, backgroundPath, outputPath, productType);
+          results.push({
+            backgroundName,
+            outputPath
+          });
+          
+          logger.info('Created background combination', { 
+            inputPath, 
+            outputPath, 
+            background,
+            backgroundName,
+            productType 
+          });
+        }
+      }
+      
+      return results;
+    } catch (error) {
+      logger.error('Error creating background combinations', { error: error.message, inputPath });
+      throw error;
+    }
   }
 
   async selectRandomBackground(backgroundPath) {
