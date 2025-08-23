@@ -182,7 +182,9 @@ class IntelligentImageProcessor {
       let productType = 'unknown';
       let hasChain = false;
       
-      if (fileName.includes('necklace') || fileName.includes('kolye')) {
+      if (fileName.includes('necklace') || fileName.includes('kolye') || 
+          fileName.includes('clawrio') || fileName.includes('pendant') ||
+          fileName.includes('chain') || fileName.includes('star')) {
         productType = 'necklace';
         hasChain = true;
       } else if (fileName.includes('ring') || fileName.includes('yüzük')) {

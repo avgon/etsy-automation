@@ -2,7 +2,7 @@ const path = require('path');
 const fs = require('fs-extra');
 const GoogleDriveService = require('./services/googleDrive');
 const OpenAIService = require('./services/openai');
-const ImageProcessor = require('./services/imageProcessor');
+const EnhancedImageProcessor = require('./services/enhancedImageProcessor');
 const EtsyService = require('./services/etsy');
 const CSVExportService = require('./services/csvExport');
 const EtsyBulkUploadService = require('./services/etsyBulkUpload');
@@ -13,7 +13,7 @@ class EtsyAutomation {
   constructor() {
     this.googleDrive = new GoogleDriveService();
     this.openai = new OpenAIService();
-    this.imageProcessor = new ImageProcessor();
+    this.imageProcessor = new EnhancedImageProcessor();
     this.etsy = new EtsyService();
     this.csvExporter = new CSVExportService();
     this.etsyBulkUploader = new EtsyBulkUploadService();

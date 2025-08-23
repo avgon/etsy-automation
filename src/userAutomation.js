@@ -1,7 +1,7 @@
 const EtsyAutomation = require('./index');
 const GoogleDriveService = require('./services/googleDrive');
 const OpenAIService = require('./services/openai');
-const ImageProcessor = require('./services/imageProcessor');
+const EnhancedImageProcessor = require('./services/enhancedImageProcessor');
 const CSVExportService = require('./services/csvExport');
 
 class UserAutomation extends EtsyAutomation {
