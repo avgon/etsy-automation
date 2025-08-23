@@ -31,7 +31,7 @@ class UserAutomation extends EtsyAutomation {
       // Re-initialize services with new tokens
       this.googleDrive = new GoogleDriveService();
       this.openai = new OpenAIService();
-      this.imageProcessor = new ImageProcessor();
+      this.imageProcessor = new EnhancedImageProcessor();
       this.csvExport = new CSVExportService();
     }
   }
